@@ -11,6 +11,7 @@ const ok = (c, m) => { console.log(c ? 'ok  :' : 'FAIL:', m); if (!c) fails++; }
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--no-sandbox'] });
   const errors = [];
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  await ctx.addInitScript(() => { if (!localStorage.getItem('cotuong.profile')) localStorage.setItem('cotuong.profile', JSON.stringify({ setup: true, name: 'Bùi Văn Bảo Nam', nick: 'Nam', avatar: '🐲' })); });
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
@@ -84,6 +85,7 @@ const ok = (c, m) => { console.log(c ? 'ok  :' : 'FAIL:', m); if (!c) fails++; }
 
   // 7) máy tính
   const d = await browser.newContext({ viewport: { width: 1280, height: 860 } });
+  await d.addInitScript(() => localStorage.setItem('cotuong.profile', JSON.stringify({ setup: true, name: 'Bùi Văn Bảo Nam', nick: 'Nam', avatar: '🐲' })));
   const dp = await d.newPage();
   dp.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   await dp.goto(url); await dp.waitForSelector('#board .piece');

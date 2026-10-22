@@ -28,6 +28,7 @@
       </div>
     </div>
     <div class="appbtns">
+      <button id="btnProfile" class="chip" type="button" aria-label="Hồ sơ người chơi"></button>
       <button id="btnRules" class="icon" type="button" aria-label="Luật chơi">📖<span>Luật</span></button>
     </div>
   </header>
@@ -71,6 +72,13 @@
         <button id="vbEnd" type="button" aria-label="Đến cuối"><i>⏭</i></button>
         <button id="vbDone" type="button" class="primary"><span>Xong</span></button>
       </nav>
+      <nav id="onlinebar" class="subbar" aria-label="Chơi online" hidden>
+        <button id="olDraw" type="button"><i>🤝</i><span>Xin hòa</span></button>
+        <button id="olResign" type="button"><i>🏳</i><span>Xin thua</span></button>
+        <button id="olChat" type="button"><i>💬</i><span>Nói chuyện</span></button>
+        <button id="olMenu" type="button" class="only-mobile"><i>☰</i><span>Menu</span></button>
+        <button id="olExit" type="button" class="primary"><i>✕</i><span>Thoát</span></button>
+      </nav>
       <nav id="puzzlebar" class="subbar" aria-label="Bài tập" hidden>
         <button id="pzHint" type="button" class="hot"><i>💡</i><span>Gợi ý</span></button>
         <button id="pzRetry" type="button"><i>↺</i><span>Làm lại</span></button>
@@ -83,6 +91,9 @@
     <aside id="sheet" aria-label="Menu">
       <div class="sheet-hd"><h2>Menu</h2><button id="sheetClose" class="icon" type="button" aria-label="Đóng">✕</button></div>
       <div class="sheet-body">
+        <div class="card">
+          <button id="btnOnline" type="button" class="primary wide-btn">🌐 Chơi online</button>
+        </div>
         <div class="card">
           <h3>Luyện tập</h3>
           <div class="grid2">
@@ -132,6 +143,7 @@
       <div class="seg" data-key="mode">
         <button type="button" data-v="ai">🤖 Chơi với máy</button>
         <button type="button" data-v="pvp">👥 2 người</button>
+        <button type="button" data-v="online">🌐 Online</button>
       </div>
     </div>
     <div class="field" data-for="ai"><div class="lbl">Bạn cầm quân</div>
@@ -148,7 +160,7 @@
         <button type="button" data-v="3">Cao thủ<small>nghĩ lâu</small></button>
       </div>
     </div>
-    <div class="field"><div class="lbl">Đồng hồ mỗi bên</div>
+    <div class="field" data-for="local"><div class="lbl">Đồng hồ mỗi bên</div>
       <div class="seg five" data-key="clock">
         <button type="button" data-v="0">Không</button>
         <button type="button" data-v="5">5′</button>
@@ -158,6 +170,63 @@
       </div>
     </div>
     <button id="startBtn" class="primary big" type="button" autofocus>Bắt đầu chơi</button>
+  </div>
+</dialog>
+
+<dialog id="onlineDlg">
+  <div class="hd"><h2>🌐 Chơi online</h2><button class="icon" type="button" data-close aria-label="Đóng">✕</button></div>
+  <div class="bd">
+    <div id="olOff" hidden>
+      <p class="dedicate">Chức năng chơi online chưa được bật trên bản này. Người quản lý game cần điền cấu hình Firebase (xem README, mục “Bật chơi online”).</p>
+    </div>
+    <div id="olOn" hidden>
+      <div class="seg four" id="olTabs">
+        <button type="button" data-tab="quick">⚡<small>Ghép nhanh</small></button>
+        <button type="button" data-tab="create">🏠<small>Tạo phòng</small></button>
+        <button type="button" data-tab="join">🔑<small>Vào phòng</small></button>
+        <button type="button" data-tab="board">🏆<small>Xếp hạng</small></button>
+      </div>
+      <p class="muted" id="olWho"></p>
+      <div id="olPanelQuick" class="olpanel">
+        <p class="muted">Máy chủ sẽ tìm một đối thủ đang chờ. Hai bạn chọn quân ngẫu nhiên.</p>
+        <div class="field"><div class="lbl">Đồng hồ mỗi bên</div>
+          <div class="seg four" data-ol="clockQ"><button type="button" data-v="0">Không</button><button type="button" data-v="5">5′</button><button type="button" data-v="10">10′</button><button type="button" data-v="15">15′</button></div></div>
+        <button id="olQuickBtn" class="primary big" type="button">⚡ Tìm đối thủ</button>
+        <div id="olQuickWait" hidden><p><span class="spinner dark"></span> Đang tìm đối thủ… <span id="olQuickSec"></span></p><button id="olQuickCancel" type="button">Hủy tìm</button></div>
+      </div>
+      <div id="olPanelCreate" class="olpanel" hidden>
+        <div class="field"><div class="lbl">Bạn cầm quân</div>
+          <div class="seg" data-ol="sideC"><button type="button" data-v="0">Trắng<small>đi trước</small></button><button type="button" data-v="1">Đen<small>đi sau</small></button><button type="button" data-v="r">Ngẫu nhiên</button></div></div>
+        <div class="field"><div class="lbl">Đồng hồ mỗi bên</div>
+          <div class="seg four" data-ol="clockC"><button type="button" data-v="0">Không</button><button type="button" data-v="5">5′</button><button type="button" data-v="10">10′</button><button type="button" data-v="15">15′</button></div></div>
+        <button id="olCreateBtn" class="primary big" type="button">🏠 Tạo phòng</button>
+      </div>
+      <div id="olPanelJoin" class="olpanel" hidden>
+        <div class="field"><label class="lbl" for="olCode">Mã phòng (6 ký tự)</label><input id="olCode" class="txt code" type="text" maxlength="6" autocapitalize="characters" autocomplete="off" placeholder="ABC123"></div>
+        <button id="olJoinBtn" class="primary big" type="button">🔑 Vào phòng</button>
+      </div>
+      <div id="olPanelBoard" class="olpanel" hidden>
+        <div id="olBoardList"><p class="muted">Đang tải…</p></div>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="chatDlg">
+  <div class="hd"><h2>💬 Nói chuyện</h2><button class="icon" type="button" data-close aria-label="Đóng">✕</button></div>
+  <div class="bd"><p class="muted">Chỉ dùng được những câu có sẵn để giữ môi trường chơi lành mạnh.</p><div id="chatList" class="chatgrid"></div></div>
+</dialog>
+
+<dialog id="profileDlg">
+  <div class="hd"><h2 id="pfTitle">Hồ sơ của bạn</h2><button class="icon" type="button" data-close aria-label="Đóng">✕</button></div>
+  <div class="bd">
+    <p id="pfIntro" class="dedicate">Nhập tên để game gọi bạn bằng tên nhé. Họ và tên chỉ lưu trên máy này; khi chơi online chỉ hiện <b>biệt danh</b>.</p>
+    <div class="field"><div class="lbl">Ảnh đại diện</div><div id="pfAvatars" class="avgrid"></div></div>
+    <div class="field"><label class="lbl" for="pfName">Họ và tên</label><input id="pfName" class="txt" type="text" maxlength="40" autocomplete="name" placeholder="Ví dụ: Bùi Văn Bảo Nam"></div>
+    <div class="field"><label class="lbl" for="pfNick">Biệt danh (hiện khi chơi online)</label><input id="pfNick" class="txt" type="text" maxlength="16" autocomplete="nickname" placeholder="Ví dụ: Nam Cờ Tướng"></div>
+    <div id="pfStatsWrap"><div id="pfStats"></div></div>
+    <button id="pfSave" class="primary big" type="button">Lưu</button>
+    <div class="row2"><button id="pfSkip" type="button" hidden>Để sau</button><button id="pfReset" type="button">Đặt lại thống kê</button></div>
   </div>
 </dialog>
 
@@ -249,6 +318,9 @@
 </script>
 <script>
 /*__PUZZLES__*/
+</script>
+<script>
+/*__ONLINE__*/
 </script>
 <script>
 /*__APP__*/
