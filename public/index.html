@@ -310,6 +310,22 @@ label.lbl { display: block; }
   #onlinebar { grid-area: action; grid-auto-flow: row; grid-template-columns: 1fr 1fr; width: auto; margin: 0; align-content: start; }
 }
 
+/* ===== Chọn cách chơi ===== */
+.homecard { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 18px 16px; margin: 12px 0 0; border-radius: 18px; border: 2px solid transparent; color: #fff; box-shadow: 0 6px 16px rgba(0,0,0,.25); }
+.homecard .hi { font-size: 2.6rem; line-height: 1; }
+.homecard .ht { display: flex; flex-direction: column; gap: 2px; }
+.homecard b { font-size: 1.35rem; }
+.homecard small { font-size: .9rem; opacity: .92; }
+.homecard.online { background: linear-gradient(135deg, #2a7de1, #1b4fa8); border-color: #123a80; }
+.homecard.offline { background: linear-gradient(135deg, #d8362a, #98201a); border-color: #7d1a14; }
+.homecard:hover:not(:disabled) { filter: brightness(1.08); background: inherit; }
+.homerow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+.homerow button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px; font-size: 1.5rem; border-radius: 14px; border: 2px solid var(--line); background: #fff; }
+.homerow small { font-size: .78rem; color: var(--muted); text-align: center; }
+#homeResume { margin-top: 12px; background: #fff4d3; border: 2px solid #e0b94a; }
+.offline-btn { background: linear-gradient(#d8362a, var(--accent-d)) !important; border-color: #7d1a14 !important; color: #fff !important; }
+.sheet-body .grid2 .wide-btn { width: auto; }
+
 </style>
 </head>
 <body>
@@ -387,7 +403,10 @@ label.lbl { display: block; }
       <div class="sheet-hd"><h2>Menu</h2><button id="sheetClose" class="icon" type="button" aria-label="Đóng">✕</button></div>
       <div class="sheet-body">
         <div class="card">
-          <button id="btnOnline" type="button" class="primary wide-btn">🌐 Chơi online</button>
+          <div class="grid2">
+            <button id="btnOnline" type="button" class="primary wide-btn">🌐 Chơi online</button>
+            <button id="btnOffline" type="button" class="wide-btn offline-btn">🤖 Chơi offline</button>
+          </div>
         </div>
         <div class="card">
           <h3>Luyện tập</h3>
@@ -431,14 +450,31 @@ label.lbl { display: block; }
   </main>
 </div>
 
+<dialog id="homeDlg">
+  <div class="hd"><h2>Chọn cách chơi</h2><button class="icon" type="button" data-close aria-label="Đóng">✕</button></div>
+  <div class="bd">
+    <button id="homeOnline" class="homecard online" type="button">
+      <span class="hi">🌐</span><span class="ht"><b>Chơi online</b><small>Thi đấu với bạn bè qua mạng</small></span>
+    </button>
+    <button id="homeOffline" class="homecard offline" type="button">
+      <span class="hi">🤖</span><span class="ht"><b>Chơi offline</b><small>Luyện cờ với máy, không cần mạng</small></span>
+    </button>
+    <div class="homerow">
+      <button id="homePvp" type="button">👥<small>2 người cùng máy</small></button>
+      <button id="homePuzzle" type="button">🧩<small>Bài tập</small></button>
+      <button id="homeGames" type="button">📁<small>Ván đã chơi</small></button>
+    </div>
+    <button id="homeResume" class="big" type="button" hidden>▶ Tiếp tục ván đang chơi</button>
+  </div>
+</dialog>
+
 <dialog id="newDlg">
-  <div class="hd"><h2>Ván mới</h2><button class="icon" type="button" data-close aria-label="Đóng">✕</button></div>
+  <div class="hd"><h2>🤖 Chơi offline</h2><button class="icon" type="button" data-close aria-label="Đóng">✕</button></div>
   <div class="bd">
     <div class="field"><div class="lbl">Chế độ</div>
       <div class="seg" data-key="mode">
         <button type="button" data-v="ai">🤖 Chơi với máy</button>
         <button type="button" data-v="pvp">👥 2 người</button>
-        <button type="button" data-v="online">🌐 Online</button>
       </div>
     </div>
     <div class="field" data-for="ai"><div class="lbl">Bạn cầm quân</div>
@@ -2101,11 +2137,30 @@ function createNet(config) {
     if (isGame() && G.moves.length >= 2 && !G.over) {
       if (!(await askConfirm('Bỏ ván đang chơi?', 'Ván cờ hiện tại chưa kết thúc. Bạn muốn bắt đầu ván mới?', 'Ván mới', 'Chơi tiếp'))) return;
     }
-    ng = { mode: S.mode, human: String(S.human), level: String(S.level), clock: String(S.clock) };
-    syncNewDlg();
+    openHome();
+  }
+  function openHome() {
     setSheet(false);
+    $('homeResume').hidden = !(isGame() && !G.online && G.moves.length > 0 && !G.over);
+    openDlg($('homeDlg'));
+  }
+  function openOffline(mode) {
+    ng = { mode: mode === 'pvp' ? 'pvp' : 'ai', human: String(S.human), level: String(S.level), clock: String(S.clock) };
+    syncNewDlg();
+    closeDlg($('homeDlg'));
     openDlg($('newDlg'));
   }
+  $('homeOnline').addEventListener('click', () => { closeDlg($('homeDlg')); openOnline(); });
+  $('homeOffline').addEventListener('click', () => openOffline('ai'));
+  $('homePvp').addEventListener('click', () => openOffline('pvp'));
+  $('homePuzzle').addEventListener('click', () => { closeDlg($('homeDlg')); openPuzzles(); });
+  $('homeGames').addEventListener('click', () => { closeDlg($('homeDlg')); openGames(); });
+  $('homeResume').addEventListener('click', () => closeDlg($('homeDlg')));
+  $('btnOffline').addEventListener('click', async () => {
+    setSheet(false);
+    if (G.online) { if (G.over || !OL || !OL.oppUid) { await olExit(); } else { toast('Đang chơi online – bấm Thoát nếu muốn rời ván.'); return; } }
+    openHome();
+  });
 
   function undo() {
     if (!isGame() || G.online || G.view != null || !G.moves.length) return;
@@ -3238,7 +3293,7 @@ function createNet(config) {
     pendingOnline = startRoom.length === 6 || !!resumeCode;
   }
   renderChip();
-  const showNewDlg = () => { ng = { mode: S.mode, human: String(S.human), level: String(S.level), clock: String(S.clock) }; syncNewDlg(); openDlg($('newDlg')); };
+  const showNewDlg = () => openHome();
   if (!PF.setup) {
     setTimeout(() => {
       openProfile(true);

@@ -25,8 +25,10 @@ const ok = (c, m) => { console.log(c ? 'ok  :' : 'FAIL:', m); if (!c) fails++; }
   await page.fill('#pfNick', 'Nam Cờ Tướng');
   await page.locator('#pfAvatars .avb').nth(3).tap();
   await page.tap('#pfSave');
-  await page.waitForFunction(() => document.getElementById('newDlg').open, null, { timeout: 5000 });
-  ok(true, 'lưu hồ sơ xong thì hiện hộp thoại ván mới');
+  await page.waitForFunction(() => document.getElementById('homeDlg').open, null, { timeout: 5000 });
+  ok(true, 'lưu hồ sơ xong thì hiện hộp thoại chọn cách chơi');
+  await page.tap('#homeOffline');
+  await page.waitForFunction(() => document.getElementById('newDlg').open);
   ok((await page.textContent('#btnProfile')).includes('Nam Cờ Tướng'), 'biệt danh hiện trên thanh trên cùng');
 
   // ván với máy mức Vừa, xin thua -> ghi 1 ván thua

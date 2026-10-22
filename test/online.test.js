@@ -25,8 +25,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push(nick + ' console: ' + m.text()); });
     await page.goto(url);
     await page.waitForSelector('#board .piece');
-    await page.waitForFunction(() => document.getElementById('newDlg').open);
-    await page.evaluate(() => document.getElementById('newDlg').close());
+    await page.waitForFunction(() => document.getElementById('homeDlg').open);
+    await page.evaluate(() => document.getElementById('homeDlg').close());
     return { ctx, page, nick };
   }
   const G = (p, expr) => p.page.evaluate(expr);

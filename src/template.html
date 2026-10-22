@@ -92,7 +92,10 @@
       <div class="sheet-hd"><h2>Menu</h2><button id="sheetClose" class="icon" type="button" aria-label="Đóng">✕</button></div>
       <div class="sheet-body">
         <div class="card">
-          <button id="btnOnline" type="button" class="primary wide-btn">🌐 Chơi online</button>
+          <div class="grid2">
+            <button id="btnOnline" type="button" class="primary wide-btn">🌐 Chơi online</button>
+            <button id="btnOffline" type="button" class="wide-btn offline-btn">🤖 Chơi offline</button>
+          </div>
         </div>
         <div class="card">
           <h3>Luyện tập</h3>
@@ -136,14 +139,31 @@
   </main>
 </div>
 
+<dialog id="homeDlg">
+  <div class="hd"><h2>Chọn cách chơi</h2><button class="icon" type="button" data-close aria-label="Đóng">✕</button></div>
+  <div class="bd">
+    <button id="homeOnline" class="homecard online" type="button">
+      <span class="hi">🌐</span><span class="ht"><b>Chơi online</b><small>Thi đấu với bạn bè qua mạng</small></span>
+    </button>
+    <button id="homeOffline" class="homecard offline" type="button">
+      <span class="hi">🤖</span><span class="ht"><b>Chơi offline</b><small>Luyện cờ với máy, không cần mạng</small></span>
+    </button>
+    <div class="homerow">
+      <button id="homePvp" type="button">👥<small>2 người cùng máy</small></button>
+      <button id="homePuzzle" type="button">🧩<small>Bài tập</small></button>
+      <button id="homeGames" type="button">📁<small>Ván đã chơi</small></button>
+    </div>
+    <button id="homeResume" class="big" type="button" hidden>▶ Tiếp tục ván đang chơi</button>
+  </div>
+</dialog>
+
 <dialog id="newDlg">
-  <div class="hd"><h2>Ván mới</h2><button class="icon" type="button" data-close aria-label="Đóng">✕</button></div>
+  <div class="hd"><h2>🤖 Chơi offline</h2><button class="icon" type="button" data-close aria-label="Đóng">✕</button></div>
   <div class="bd">
     <div class="field"><div class="lbl">Chế độ</div>
       <div class="seg" data-key="mode">
         <button type="button" data-v="ai">🤖 Chơi với máy</button>
         <button type="button" data-v="pvp">👥 2 người</button>
-        <button type="button" data-v="online">🌐 Online</button>
       </div>
     </div>
     <div class="field" data-for="ai"><div class="lbl">Bạn cầm quân</div>

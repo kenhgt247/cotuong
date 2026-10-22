@@ -293,3 +293,19 @@ label.lbl { display: block; }
 @media (max-width: 900px) and (orientation: landscape) and (max-height: 520px) {
   #onlinebar { grid-area: action; grid-auto-flow: row; grid-template-columns: 1fr 1fr; width: auto; margin: 0; align-content: start; }
 }
+
+/* ===== Chọn cách chơi ===== */
+.homecard { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 18px 16px; margin: 12px 0 0; border-radius: 18px; border: 2px solid transparent; color: #fff; box-shadow: 0 6px 16px rgba(0,0,0,.25); }
+.homecard .hi { font-size: 2.6rem; line-height: 1; }
+.homecard .ht { display: flex; flex-direction: column; gap: 2px; }
+.homecard b { font-size: 1.35rem; }
+.homecard small { font-size: .9rem; opacity: .92; }
+.homecard.online { background: linear-gradient(135deg, #2a7de1, #1b4fa8); border-color: #123a80; }
+.homecard.offline { background: linear-gradient(135deg, #d8362a, #98201a); border-color: #7d1a14; }
+.homecard:hover:not(:disabled) { filter: brightness(1.08); background: inherit; }
+.homerow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+.homerow button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px; font-size: 1.5rem; border-radius: 14px; border: 2px solid var(--line); background: #fff; }
+.homerow small { font-size: .78rem; color: var(--muted); text-align: center; }
+#homeResume { margin-top: 12px; background: #fff4d3; border: 2px solid #e0b94a; }
+.offline-btn { background: linear-gradient(#d8362a, var(--accent-d)) !important; border-color: #7d1a14 !important; color: #fff !important; }
+.sheet-body .grid2 .wide-btn { width: auto; }

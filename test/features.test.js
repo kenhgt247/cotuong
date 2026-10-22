@@ -17,6 +17,8 @@ const ok = (c, m) => { console.log(c ? 'ok  :' : 'FAIL:', m); if (!c) fails++; }
   page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
   await page.goto(url);
   await page.waitForSelector('#board .piece');
+  await page.waitForFunction(() => document.getElementById('homeDlg').open);
+  await page.tap('#homePvp');
   await page.waitForFunction(() => document.getElementById('newDlg').open);
   await page.screenshot({ path: out + '/f0-dedication.png' });
   await page.click('#newDlg [data-key=mode] [data-v="pvp"]');

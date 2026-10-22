@@ -17,7 +17,7 @@ const ok = (c, m) => { console.log(c ? 'ok  :' : 'FAIL:', m); if (!c) fails++; }
   page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
   await page.goto(url);
   await page.waitForSelector('#board .piece');
-  await page.waitForFunction(() => document.getElementById('newDlg').open);
+  await page.waitForFunction(() => document.getElementById('homeDlg').open); await page.screenshot({ path: out + '/h1-home.png' }); await page.tap('#homeOffline'); await page.waitForFunction(() => document.getElementById('newDlg').open);
   await page.screenshot({ path: out + '/m1-newgame.png' });
 
   await page.click('#newDlg [data-key=level] [data-v="1"]');
@@ -89,6 +89,9 @@ const ok = (c, m) => { console.log(c ? 'ok  :' : 'FAIL:', m); if (!c) fails++; }
   const dp = await d.newPage();
   dp.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   await dp.goto(url); await dp.waitForSelector('#board .piece');
+  await dp.waitForFunction(() => document.getElementById('homeDlg').open);
+  await dp.screenshot({ path: out + '/h2-home-desktop.png' });
+  await dp.click('#homeOffline');
   await dp.waitForFunction(() => document.getElementById('newDlg').open);
   await dp.click('#startBtn');
   await dp.waitForTimeout(500);

@@ -1,6 +1,6 @@
 /* Service worker: lưu game vào máy để chơi offline.
  * Đổi số phiên bản CACHE mỗi lần phát hành bản mới. */
-const CACHE = 'co-tuong-v5';
+const CACHE = 'co-tuong-v6';
 const SHELL = [
   './',
   './index.html',

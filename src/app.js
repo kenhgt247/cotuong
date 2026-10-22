@@ -580,11 +580,30 @@
     if (isGame() && G.moves.length >= 2 && !G.over) {
       if (!(await askConfirm('Bỏ ván đang chơi?', 'Ván cờ hiện tại chưa kết thúc. Bạn muốn bắt đầu ván mới?', 'Ván mới', 'Chơi tiếp'))) return;
     }
-    ng = { mode: S.mode, human: String(S.human), level: String(S.level), clock: String(S.clock) };
-    syncNewDlg();
+    openHome();
+  }
+  function openHome() {
     setSheet(false);
+    $('homeResume').hidden = !(isGame() && !G.online && G.moves.length > 0 && !G.over);
+    openDlg($('homeDlg'));
+  }
+  function openOffline(mode) {
+    ng = { mode: mode === 'pvp' ? 'pvp' : 'ai', human: String(S.human), level: String(S.level), clock: String(S.clock) };
+    syncNewDlg();
+    closeDlg($('homeDlg'));
     openDlg($('newDlg'));
   }
+  $('homeOnline').addEventListener('click', () => { closeDlg($('homeDlg')); openOnline(); });
+  $('homeOffline').addEventListener('click', () => openOffline('ai'));
+  $('homePvp').addEventListener('click', () => openOffline('pvp'));
+  $('homePuzzle').addEventListener('click', () => { closeDlg($('homeDlg')); openPuzzles(); });
+  $('homeGames').addEventListener('click', () => { closeDlg($('homeDlg')); openGames(); });
+  $('homeResume').addEventListener('click', () => closeDlg($('homeDlg')));
+  $('btnOffline').addEventListener('click', async () => {
+    setSheet(false);
+    if (G.online) { if (G.over || !OL || !OL.oppUid) { await olExit(); } else { toast('Đang chơi online – bấm Thoát nếu muốn rời ván.'); return; } }
+    openHome();
+  });
 
   function undo() {
     if (!isGame() || G.online || G.view != null || !G.moves.length) return;
@@ -1717,7 +1736,7 @@
     pendingOnline = startRoom.length === 6 || !!resumeCode;
   }
   renderChip();
-  const showNewDlg = () => { ng = { mode: S.mode, human: String(S.human), level: String(S.level), clock: String(S.clock) }; syncNewDlg(); openDlg($('newDlg')); };
+  const showNewDlg = () => openHome();
   if (!PF.setup) {
     setTimeout(() => {
       openProfile(true);
