@@ -12,7 +12,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Cờ Tướng">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Cờ Tướng – Luyện cờ cùng máy</title>
+<title>Cờ Tướng của Bảo Nam</title>
 <style>
 /*__CSS__*/
 </style>
@@ -24,7 +24,7 @@
       <span class="logo" aria-hidden="true">帥</span>
       <div>
         <h1>Cờ <span>Tướng</span></h1>
-        <div class="sub">Luyện cờ theo luật Liên đoàn Cờ Việt Nam · chơi offline</div>
+        <div class="sub">Của <b>Bùi Văn Bảo Nam</b> · luật Liên đoàn Cờ Việt Nam · chơi offline</div>
       </div>
     </div>
     <div class="appbtns">
@@ -60,8 +60,23 @@
         <button id="btnNew" type="button"><i>＋</i><span>Ván mới</span></button>
         <button id="btnUndo" type="button"><i>↶</i><span>Đi lại</span></button>
         <button id="btnHint" type="button" class="hot"><i>💡</i><span>Gợi ý</span></button>
-        <button id="btnDraw" type="button"><i>🤝</i><span>Xin hòa</span></button>
+        <button id="btnTrain" type="button"><i>🧩</i><span>Luyện tập</span></button>
         <button id="btnMenu" type="button" class="only-mobile"><i>☰</i><span>Menu</span></button>
+      </nav>
+      <nav id="viewbar" class="subbar" aria-label="Xem lại ván" hidden>
+        <button id="vbStart" type="button" aria-label="Về đầu"><i>⏮</i></button>
+        <button id="vbPrev" type="button" aria-label="Lùi một nước"><i>◀</i></button>
+        <button id="vbAuto" type="button" aria-label="Tự chạy"><i>⏵</i></button>
+        <button id="vbNext" type="button" aria-label="Tiến một nước"><i>▶</i></button>
+        <button id="vbEnd" type="button" aria-label="Đến cuối"><i>⏭</i></button>
+        <button id="vbDone" type="button" class="primary"><span>Xong</span></button>
+      </nav>
+      <nav id="puzzlebar" class="subbar" aria-label="Bài tập" hidden>
+        <button id="pzHint" type="button" class="hot"><i>💡</i><span>Gợi ý</span></button>
+        <button id="pzRetry" type="button"><i>↺</i><span>Làm lại</span></button>
+        <button id="pzNext" type="button"><i>⏭</i><span>Câu sau</span></button>
+        <button id="pzList" type="button"><i>▦</i><span>Danh sách</span></button>
+        <button id="pzExit" type="button" class="primary"><i>✕</i><span>Thoát</span></button>
       </nav>
     </section>
 
@@ -69,11 +84,20 @@
       <div class="sheet-hd"><h2>Menu</h2><button id="sheetClose" class="icon" type="button" aria-label="Đóng">✕</button></div>
       <div class="sheet-body">
         <div class="card">
+          <h3>Luyện tập</h3>
           <div class="grid2">
+            <button id="btnTrain2" type="button">🧩 Bài tập chiếu hết</button>
+            <button id="btnGames" type="button">📁 Ván đã chơi</button>
+            <button id="btnAnalyze" type="button" class="wide">🔍 Phân tích ván này</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="grid2">
+            <button id="btnDraw" type="button">🤝 Xin hòa</button>
             <button id="btnResign" type="button">🏳 Xin thua</button>
-            <button id="btnFlip" type="button">⇅ Lật bàn cờ</button>
             <button id="btnRules2" type="button">📖 Luật chơi</button>
             <button id="btnNew2" type="button" class="primary">＋ Ván mới</button>
+            <button id="btnFlip" type="button">⇅ Lật bàn cờ</button>
           </div>
         </div>
         <div class="card">
@@ -135,6 +159,24 @@
     </div>
     <button id="startBtn" class="primary big" type="button" autofocus>Bắt đầu chơi</button>
   </div>
+</dialog>
+
+<dialog id="gamesDlg">
+  <div class="hd"><h2>📁 Ván đã chơi</h2><button class="icon" type="button" data-close aria-label="Đóng">✕</button></div>
+  <div class="bd"><div id="gamesList"></div></div>
+</dialog>
+
+<dialog id="puzzlesDlg">
+  <div class="hd"><h2>🧩 Bài tập chiếu hết</h2><button class="icon" type="button" data-close aria-label="Đóng">✕</button></div>
+  <div class="bd">
+    <p class="muted">Tìm nước đi ép đối phương bị chiếu hết. Mỗi bài chỉ có đúng một nước mở đầu. Bạn có thể bấm quân hoặc kéo thả quân.</p>
+    <div id="puzzlesList"></div>
+  </div>
+</dialog>
+
+<dialog id="analysisDlg">
+  <div class="hd"><h2>🔍 Phân tích ván cờ</h2><button class="icon" type="button" data-close aria-label="Đóng">✕</button></div>
+  <div class="bd" id="analysisBody"></div>
 </dialog>
 
 <dialog id="confirmDlg">
@@ -204,6 +246,9 @@
 
 <script>
 /*__ENGINE__*/
+</script>
+<script>
+/*__PUZZLES__*/
 </script>
 <script>
 /*__APP__*/

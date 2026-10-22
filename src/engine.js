@@ -519,8 +519,86 @@ function createEngine() {
     return { viol };
   }
 
+  // ---------- FEN (quân Trắng = chữ hoa, Đen = chữ thường, dòng cuối là bên Trắng) ----------
+  const FEN_LET = ['', 'k', 'a', 'b', 'n', 'r', 'c', 'p'];
+  function toFen(b, sd) {
+    const rows = [];
+    for (let r = 0; r < 10; r++) {
+      let s = '', e = 0;
+      for (let c = 0; c < 9; c++) {
+        const p = b[r * 9 + c];
+        if (!p) { e++; continue; }
+        if (e) { s += e; e = 0; }
+        const l = FEN_LET[p & 7];
+        s += (p >> 3) === 0 ? l.toUpperCase() : l;
+      }
+      if (e) s += e;
+      rows.push(s);
+    }
+    return rows.join('/') + ' ' + (sd === 0 ? 'w' : 'b');
+  }
+  function fromFen(fen) {
+    const [rows, side] = fen.trim().split(/\s+/);
+    const b = new Int8Array(90);
+    rows.split('/').forEach((row, r) => {
+      let c = 0;
+      for (const ch of row) {
+        if (ch >= '0' && ch <= '9') { c += +ch; continue; }
+        const t = FEN_LET.indexOf(ch.toLowerCase());
+        b[r * 9 + c++] = t + (ch === ch.toLowerCase() ? 8 : 0);
+      }
+    });
+    return { board: b, side: side === 'b' ? 1 : 0 };
+  }
+
+  // ---------- Bài tập chiếu hết ----------
+  /**
+   * Các nước đi của bên `att` ép chiếu hết trong n nước. strict = bắt buộc là chiếu bí thật (không tính hết nước đi).
+   * n = 1: nước chiếu bí. n = 2: nước đầu tùy ý. n >= 3: các nước ép phải là nước chiếu.
+   */
+  function mateMoves(st, att, n, strict) {
+    const def = 1 - att, out = [];
+    const moves = genLegal(st, att);
+    for (let i = 0; i < moves.length; i++) {
+      const mv = moves[i];
+      const cap = makeMove(st, mv);
+      let ok = false;
+      if (n === 1) ok = (!strict || inCheck(st, def)) && genLegal(st, def).length === 0;
+      else if (n === 2 || inCheck(st, def)) {
+        const replies = genLegal(st, def);
+        if (!replies.length) ok = !strict || inCheck(st, def);
+        else {
+          ok = true;
+          for (let j = 0; j < replies.length && ok; j++) {
+            const c2 = makeMove(st, replies[j]);
+            ok = mateMoves(st, att, n - 1, strict).length > 0;
+            unmakeMove(st, replies[j], c2);
+          }
+        }
+      }
+      unmakeMove(st, mv, cap);
+      if (ok) out.push(mv);
+    }
+    return out;
+  }
+
+  /** Nước chống đỡ cứng đầu nhất của bên thủ: nước kéo dài việc chiếu hết lâu nhất. */
+  function bestDefense(st, att, n) {
+    const def = 1 - att;
+    const replies = genLegal(st, def);
+    let best = replies[0], bestN = -1;
+    for (const r of replies) {
+      const c = makeMove(st, r);
+      let k = 1;
+      while (k < n && mateMoves(st, att, k, true).length === 0) k++;
+      unmakeMove(st, r, c);
+      if (k > bestN) { bestN = k; best = r; }
+    }
+    return best;
+  }
+
   return {
-    K, A, E, H, R, C, P, ROW, COL, NAMES,
+    K, A, E, H, R, C, P, ROW, COL, NAMES, toFen, fromFen, mateMoves, bestDefense,
     sideOf, typeOf, initialBoard, newState, makeMove, unmakeMove, boardKey,
     genLegal, genPseudo, inCheck, notate, evaluate, search, judgeCycle, classify,
   };

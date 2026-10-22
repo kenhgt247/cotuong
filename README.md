@@ -6,6 +6,9 @@ Game Cờ Tướng chạy hoàn toàn trên trình duyệt, **chơi được khi
 - Chơi với máy (4 mức: Dễ, Vừa, Khó, Cao thủ) hoặc 2 người cùng máy
 - Gợi ý nước đi, đi lại, xin hòa, xin thua
 - Luật đầy đủ: chiếu bí, hết nước đi thì thua, chiếu mãi, bắt mãi, các trường hợp hòa
+- Đồng hồ mỗi bên, kéo thả quân, rung khi đi quân, giao diện vừa một màn hình điện thoại
+- **Bài tập chiếu hết** (72 bài, 1–3 nước, tự tạo và kiểm tra bằng `tools/gen-puzzles.js`)
+- **Lưu ván đã chơi**, xem lại từng nước, **phân tích ván** (máy chỉ ra nước sai và nước tốt hơn)
 - Ghi nước đi kiểu Việt Nam ("Pháo 2 bình 5"), hiển thị tên quân bằng chữ Hán hoặc tiếng Việt
 
 ## Cấu trúc

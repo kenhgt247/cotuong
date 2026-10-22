@@ -28,20 +28,33 @@
   const BW = 8 * CELL + 2 * M, BH = 9 * CELL + 2 * M;
 
   // ---------- Trạng thái ----------
+  // S: cài đặt dùng chung. G: ván đang hiển thị (ván thật, xem lại hoặc bài tập). stash: ván thật khi đang xem lại/làm bài tập.
   const S = { mode: 'ai', human: 0, level: 1, clock: 0, hints: true, sound: true, vibe: true, flipped: false, pieceStyle: 'han' };
-  let G = null;
+  let G = null, stash = null;
   let aiToken = 0;
 
-  function freshGame() {
-    const b = Eng.initialBoard();
-    const ms = S.clock * 60000;
-    return { pos: [b], moves: [], notes: [], keys: [Eng.boardKey(b, 0)], caps: [], over: null,
+  function freshGame(opts) {
+    opts = opts || {};
+    const first = opts.first || 0;
+    const b = opts.board ? Int8Array.from(opts.board) : Eng.initialBoard();
+    const ms = (opts.kind && opts.kind !== 'game') ? 0 : S.clock * 60000;
+    return { kind: opts.kind || 'game', id: Date.now(), first,
+      cfg: opts.cfg || { mode: S.mode, human: S.human, level: S.level, clock: S.clock },
+      pos: [b], moves: [], notes: [], keys: [Eng.boardKey(b, first)], caps: [], over: null,
       sel: null, legal: [], hint: null, hintText: '', thinking: false, busy: false, anim: null, viewing: false,
-      clock: { on: S.clock > 0, t: [ms, ms], last: null } };
+      view: null, auto: 0, analysis: null, puzzle: opts.puzzle || null,
+      clock: { on: ms > 0, t: [ms, ms], last: null } };
   }
+  const isGame = () => G.kind === 'game';
+  const cfg = () => G.cfg;
+  // lượt đi và thế cờ THẬT (dùng cho luật chơi)
+  const turn = () => (G.first + G.moves.length) & 1;
   const cur = () => G.pos[G.pos.length - 1];
-  const turn = () => G.moves.length & 1;
-  const humanTurn = () => S.mode === 'pvp' || turn() === S.human;
+  // thế cờ ĐANG XEM (dùng để vẽ)
+  const vlen = () => (G.view == null ? G.moves.length : G.view);
+  const vpos = () => G.pos[vlen()];
+  const vturn = () => (G.first + vlen()) & 1;
+  const humanTurn = () => cfg().mode === 'pvp' || turn() === cfg().human;
   const stateOf = (b) => Eng.newState(Int8Array.from(b));
 
   // ---------- SVG ----------
@@ -101,6 +114,11 @@
     const river = { y: Y(4.5), 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': 26, fill: '#6b4518', 'font-family': 'KaiTi,STKaiti,"Noto Serif CJK SC",serif', 'letter-spacing': 6 };
     el('text', Object.assign({ x: X(2) + 4 }, river), gGrid).textContent = '楚河';
     el('text', Object.assign({ x: X(6) - 4 }, river), gGrid).textContent = '漢界';
+    // con dấu tên người nhận
+    const sx = X(4), sy = Y(4.5);
+    el('rect', { x: sx - 66, y: sy - 15, width: 132, height: 30, rx: 7, fill: '#b3261e', stroke: '#7d1a14', 'stroke-width': 2, opacity: .92 }, gGrid);
+    el('rect', { x: sx - 62, y: sy - 11, width: 124, height: 22, rx: 5, fill: 'none', stroke: '#ffd9c9', 'stroke-width': 1, opacity: .7 }, gGrid);
+    el('text', { x: sx, y: sy + 1, 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': 13.5, 'font-weight': 700, fill: '#fff4e0', 'font-family': 'Georgia,"Times New Roman",serif', 'font-style': 'italic' }, gGrid).textContent = 'Bùi Văn Bảo Nam';
   }
   drawGrid();
 
@@ -220,7 +238,7 @@
     const j = G.keys.indexOf(key);
     const boards = G.pos.slice(j).concat([nb]);
     const moves = G.moves.slice(j).concat([mv]);
-    const { viol } = Eng.judgeCycle(boards, moves, j & 1);
+    const { viol } = Eng.judgeCycle(boards, moves, (G.first + j) & 1);
     const opp = 1 - mover;
     if (viol[mover] && viol[opp]) return { kind: 'draw', both: true, viol };
     if (viol[mover]) return { kind: 'mover-loses', reason: viol[mover], viol };
@@ -231,7 +249,7 @@
 
   // ---------- Đi quân ----------
   function applyRaw(mv) {
-    const mover = G.moves.length & 1;
+    const mover = turn();
     const board = cur();
     const note = Eng.notate(board, mv);
     const st = stateOf(board);
@@ -242,7 +260,8 @@
   }
 
   function tryMove(mv, byHuman) {
-    const mover = G.moves.length & 1;
+    if (G.kind === 'puzzle') return puzzleMove(mv);
+    const mover = turn();
     const board = cur();
     const st2 = stateOf(board);
     Eng.makeMove(st2, mv);
@@ -315,10 +334,11 @@
     G.thinking = false; G.busy = false; G.sel = null; G.hint = null; G.hintText = '';
     aiToken++;
     if (winner === null) { SND.move(); }
-    else if (S.mode === 'ai') { winner === S.human ? SND.win() : SND.lose(); }
+    else if (cfg().mode === 'ai') { winner === cfg().human ? SND.win() : SND.lose(); }
     else SND.win();
     buzz(winner === null ? 20 : [60, 60, 120]);
     G.viewing = false;
+    if (isGame()) archiveGame(G);
   }
 
   // ---------- Đồng hồ ----------
@@ -338,7 +358,7 @@
   }
   setInterval(() => {
     const c = G && G.clock;
-    if (!c || !c.on || G.over) { if (c) c.last = null; return; }
+    if (!c || !c.on || G.over || !isGame()) { if (c) c.last = null; return; }
     const now = Date.now(), t = turn();
     if (c.last != null) c.t[t] -= now - c.last;
     c.last = now;
@@ -368,19 +388,20 @@
   }
 
   function maybeAI() {
-    if (G.over || S.mode !== 'ai' || turn() === S.human || G.thinking) return;
+    if (!isGame() || G.over || cfg().mode !== 'ai' || turn() === cfg().human || G.thinking) return;
     G.thinking = true;
     render();
     const token = ++aiToken;
-    const opts = Object.assign({}, LEVELS[S.level], { override: aiOverride() });
-    if (G.moves.length < 4 && S.level >= 1) { opts.exact = true; opts.margin = 40; opts.maxDepth = Math.min(opts.maxDepth, 3); opts.timeMs = 800; }
+    const opts = Object.assign({}, LEVELS[cfg().level], { override: aiOverride() });
+    if (G.moves.length < 4 && cfg().level >= 1) { opts.exact = true; opts.margin = 40; opts.maxDepth = Math.min(opts.maxDepth, 3); opts.timeMs = 800; }
     if (G.clock.on) opts.timeMs = Math.max(250, Math.min(opts.timeMs, G.clock.t[turn()] / 25));
     const t0 = Date.now();
+    const game = G;
     runSearch(cur(), turn(), opts).then((res) => {
-      if (token !== aiToken) return;
+      if (token !== aiToken || G !== game) return;
       const wait = Math.max(0, 450 - (Date.now() - t0));
       setTimeout(() => {
-        if (token !== aiToken) return;
+        if (token !== aiToken || G !== game) return;
         G.thinking = false;
         if (!res) { render(); return; }
         tryMove(res.mv, false);
@@ -388,11 +409,13 @@
     });
   }
 
-  function cancelAI() { aiToken++; G.thinking = false; G.busy = false; resetWorker(); }
+  function cancelAI() { aiToken++; if (G) { G.thinking = false; G.busy = false; } resetWorker(); }
 
-  // ---------- Chức năng ----------
+  // ---------- Ván mới ----------
   function newGame() {
     cancelAI();
+    leaveSpecial(true);
+    if (G && isGame() && G.moves.length >= 6 && !G.over) archiveGame(G, true);
     G = freshGame();
     render();
     saveGame();
@@ -407,7 +430,7 @@
   }
 
   async function openNew() {
-    if (G.moves.length >= 2 && !G.over) {
+    if (isGame() && G.moves.length >= 2 && !G.over) {
       if (!(await askConfirm('Bỏ ván đang chơi?', 'Ván cờ hiện tại chưa kết thúc. Bạn muốn bắt đầu ván mới?', 'Ván mới', 'Chơi tiếp'))) return;
     }
     ng = { mode: S.mode, human: String(S.human), level: String(S.level), clock: String(S.clock) };
@@ -417,23 +440,25 @@
   }
 
   function undo() {
-    if (!G.moves.length) return;
+    if (!isGame() || G.view != null || !G.moves.length) return;
     cancelAI();
     const popOne = () => { G.moves.pop(); G.notes.pop(); G.pos.pop(); G.keys.pop(); G.caps.pop(); };
-    G.over = null;
+    G.over = null; G.analysis = null;
     popOne();
-    if (S.mode === 'ai') while (turn() !== S.human && G.moves.length) popOne();
+    if (cfg().mode === 'ai') while (turn() !== cfg().human && G.moves.length) popOne();
     G.sel = null; G.hint = null; G.hintText = ''; G.anim = null; G.viewing = false;
     if (G.clock.on) G.clock.last = Date.now();
     render(); saveGame(); maybeAI();
   }
 
   async function hint() {
-    if (G.over || G.thinking || G.busy || !humanTurn()) return;
+    if (G.over || G.thinking || G.busy || !humanTurn() || G.view != null) return;
+    if (G.kind === 'puzzle') return puzzleHint();
     G.busy = true; G.hint = null; G.hintText = 'Đang nghĩ gợi ý…'; render();
     const token = ++aiToken;
+    const game = G;
     const res = await runSearch(cur(), turn(), { maxDepth: 6, timeMs: 1600, override: aiOverride() });
-    if (token !== aiToken) return;
+    if (token !== aiToken || G !== game) return;
     G.busy = false;
     if (res) {
       G.hint = { from: res.mv & 127, to: res.mv >> 7 };
@@ -443,16 +468,18 @@
   }
 
   async function offerDraw() {
-    if (G.over || G.thinking || G.busy || !humanTurn()) return;
-    if (S.mode === 'pvp') {
+    setSheet(false);
+    if (!isGame() || G.over || G.thinking || G.busy || !humanTurn() || G.view != null) { toast('Chỉ xin hòa được khi đến lượt bạn trong ván đang chơi.'); return; }
+    if (cfg().mode === 'pvp') {
       if (await askConfirm('Xin hòa', `${SIDE_SHORT[1 - turn()]} có đồng ý hòa không?`, 'Đồng ý hòa', 'Không')) { finish(null, 'Hai bên thỏa thuận hòa.'); render(); saveGame(); }
       return;
     }
     if (G.moves.length < 10) { toast('Mới đi ít nước quá, máy chưa đồng ý hòa. Hãy chơi thêm nhé!'); return; }
     G.busy = true; G.hintText = 'Máy đang cân nhắc lời xin hòa…'; render();
     const token = ++aiToken;
-    const res = await runSearch(cur(), 1 - S.human, { maxDepth: 4, timeMs: 900 });
-    if (token !== aiToken) return;
+    const game = G;
+    const res = await runSearch(cur(), 1 - cfg().human, { maxDepth: 4, timeMs: 900 });
+    if (token !== aiToken || G !== game) return;
     G.busy = false; G.hintText = '';
     if (res && res.bestScore <= 60) finish(null, 'Máy đồng ý hòa. Hai bên thỏa thuận hòa.');
     else toast('Máy không đồng ý hòa – máy thấy mình đang có lợi. Hãy cố gắng nhé!');
@@ -460,16 +487,274 @@
   }
 
   async function resign() {
-    if (G.over) return;
-    const loser = S.mode === 'ai' ? S.human : turn();
+    setSheet(false);
+    if (!isGame() || G.over) return;
+    const loser = cfg().mode === 'ai' ? cfg().human : turn();
     if (!(await askConfirm('Xin thua?', `${SIDE_NAME[loser]} xin thua ván này?`, 'Xin thua', 'Chơi tiếp'))) return;
     cancelAI();
     finish(1 - loser, `${SIDE_NAME[loser]} xin thua. ${SIDE_NAME[1 - loser]} thắng.`);
-    setSheet(false);
     render(); saveGame();
   }
 
   function flip() { S.flipped = !S.flipped; render(); saveSettings(); }
+
+  // ---------- Xem lại từng nước ----------
+  function stopAuto() { if (G && G.auto) { clearInterval(G.auto); G.auto = 0; } }
+  function setView(i, animate) {
+    const n = G.moves.length;
+    i = Math.max(0, Math.min(n, i));
+    G.sel = null; G.hint = null; G.hintText = '';
+    G.view = i;
+    G.anim = animate && i > 0 ? { from: G.moves[i - 1] & 127, to: G.moves[i - 1] >> 7, cap: G.caps[i - 1] } : null;
+    if (animate && i > 0) { G.caps[i - 1] ? SND.capture() : SND.move(); }
+    render();
+  }
+  function exitView() {
+    stopAuto();
+    if (G.kind === 'replay') { leaveSpecial(false); return; }
+    G.view = null; G.anim = null; render();
+    maybeAI();
+  }
+  function toggleAuto() {
+    if (G.auto) { stopAuto(); render(); return; }
+    if (G.view == null) setView(0);
+    if (G.view >= G.moves.length) setView(0);
+    G.auto = setInterval(() => {
+      if (G.view == null || G.view >= G.moves.length) { stopAuto(); render(); return; }
+      setView(G.view + 1, true);
+    }, 900);
+    render();
+  }
+
+  // ---------- Ván đã chơi ----------
+  const GAMES_KEY = 'cotuong.games';
+  function loadArchive() { try { return JSON.parse(localStorage.getItem(GAMES_KEY) || '[]') || []; } catch (e) { return []; } }
+  function saveArchive(list) { try { localStorage.setItem(GAMES_KEY, JSON.stringify(list.slice(0, 40))); } catch (e) { /* */ } }
+  function archiveGame(g, abandoned) {
+    if (!g.moves.length || g.kind !== 'game') return;
+    const list = loadArchive().filter((x) => x.id !== g.id);
+    list.unshift({ id: g.id, t: Date.now(), cfg: g.cfg, moves: g.moves.slice(), winner: abandoned ? 'x' : g.over.winner, text: abandoned ? 'Bỏ dở' : g.over.text });
+    saveArchive(list);
+  }
+  function resultLabel(e) {
+    if (e.winner === 'x') return ['Bỏ dở', ''];
+    if (e.winner === null) return ['Hòa', 'res-draw'];
+    if (e.cfg.mode === 'ai') return e.winner === e.cfg.human ? ['Thắng', 'res-win'] : ['Thua', 'res-lose'];
+    return [SIDE_SHORT[e.winner] + ' thắng', 'res-win'];
+  }
+  function renderGamesList() {
+    const list = loadArchive(), box = $('gamesList');
+    if (!list.length) { box.innerHTML = '<div class="empty-note">Chưa có ván nào được lưu.<br>Ván cờ tự lưu khi kết thúc.</div>'; return; }
+    box.innerHTML = list.map((e) => {
+      const [txt, cls] = resultLabel(e);
+      const d = new Date(e.t);
+      const when = `${d.getDate()}/${d.getMonth() + 1} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      const vs = e.cfg.mode === 'ai' ? `Với máy · ${LEVELS[e.cfg.level].name} · cầm ${SIDE_SHORT[e.cfg.human]}` : '2 người';
+      return `<div class="grow"><div class="gi"><b class="${cls}">${txt}</b><small>${vs}<br>${when} · ${e.moves.length} nước</small></div><button data-act="view" data-id="${e.id}">Xem lại</button><button data-act="del" data-id="${e.id}" aria-label="Xóa">🗑</button></div>`;
+    }).join('');
+  }
+  function openGames() { setSheet(false); renderGamesList(); openDlg($('gamesDlg')); }
+  $('gamesList').addEventListener('click', (ev) => {
+    const b = ev.target.closest('button'); if (!b) return;
+    const id = +b.dataset.id;
+    if (b.dataset.act === 'del') { saveArchive(loadArchive().filter((x) => x.id !== id)); renderGamesList(); }
+    else if (b.dataset.act === 'view') {
+      const e = loadArchive().find((x) => x.id === id);
+      if (e) { closeDlg($('gamesDlg')); startReplay(e); }
+    }
+  });
+
+  // ---------- Ván tạm (xem lại, bài tập): giữ ván thật để quay về ----------
+  function enterSpecial(newG, flipped) {
+    cancelAI();
+    if (!stash) stash = { G, flipped: S.flipped };
+    else stopAuto();
+    G = newG;
+    S.flipped = flipped;
+  }
+  function leaveSpecial(silent) {
+    if (!stash) return;
+    stopAuto();
+    G = stash.G; S.flipped = stash.flipped; stash = null;
+    if (!silent) { render(); if (isGame()) maybeAI(); }
+  }
+  function startReplay(e) {
+    const g = freshGame({ kind: 'replay', cfg: e.cfg });
+    const live = G;
+    G = g;
+    for (const mv of e.moves) applyRaw(mv);
+    G = live;
+    g.over = { winner: e.winner === 'x' ? null : e.winner, text: e.text };
+    enterSpecial(g, e.cfg.mode === 'ai' && e.cfg.human === 1);
+    setView(0);
+  }
+
+  // ---------- Phân tích ván ----------
+  const clampScore = (s) => Math.max(-1500, Math.min(1500, s));
+  let analysisRun = 0;
+  function canAnalyze() { return G && G.moves.length >= 4 && (G.over || G.kind === 'replay'); }
+
+  async function openAnalysis() {
+    setSheet(false);
+    if (!canAnalyze()) { toast('Hãy chơi xong ván cờ (hoặc mở một ván đã lưu) rồi bấm Phân tích.'); return; }
+    if (G.analysis) { showAnalysis(); return; }
+    const run = ++analysisRun, game = G;
+    const body = $('analysisBody');
+    body.innerHTML = '<p>Máy đang xem lại từng nước đi của ván cờ…</p><div class="bar"><div id="anBar"></div></div><p class="muted" id="anTxt"></p><button id="anCancel" type="button">Dừng lại</button>';
+    $('anCancel').onclick = () => { analysisRun++; resetWorker(); closeDlg($('analysisDlg')); };
+    openDlg($('analysisDlg'));
+    const n = game.moves.length, best = [], score = [];
+    for (let i = 0; i <= n; i++) {
+      if (run !== analysisRun) return;
+      const side = (game.first + i) & 1;
+      const res = await runSearch(game.pos[i], side, { maxDepth: 4, timeMs: 380 });
+      if (run !== analysisRun) return;
+      best[i] = res ? res.mv : null;
+      score[i] = res ? clampScore(res.bestScore) : -1500;
+      $('anBar').style.width = Math.round(((i + 1) / (n + 1)) * 100) + '%';
+      $('anTxt').textContent = `Nước ${i}/${n}`;
+    }
+    const loss = [], grade = [];
+    for (let i = 0; i < n; i++) {
+      let l = best[i] === game.moves[i] ? 0 : Math.max(0, score[i] + score[i + 1]);
+      if (i === n - 1 && game.over && game.over.winner !== null && game.over.winner === ((game.first + i) & 1)) l = 0;
+      loss.push(l);
+      grade.push(l >= 300 ? '??' : l >= 120 ? '?' : l >= 50 ? '?!' : '');
+    }
+    game.analysis = { best, loss, grade };
+    if (G === game) { render(); showAnalysis(); }
+  }
+
+  function showAnalysis() {
+    const a = G.analysis, n = G.moves.length;
+    const side = (i) => (G.first + i) & 1;
+    const acc = [0, 1].map((s) => {
+      const ls = a.loss.filter((_, i) => side(i) === s);
+      if (!ls.length) return 100;
+      return Math.round(100 * Math.max(0, 1 - ls.reduce((x, y) => x + y, 0) / ls.length / 350));
+    });
+    const bad = [];
+    a.grade.forEach((g, i) => { if (g === '??' || g === '?') bad.push(i); });
+    const cls = { '??': 'g-bad', '?': 'g-mid', '?!': 'g-low' };
+    const lbl = { '??': 'Sai lầm nặng', '?': 'Sai lầm', '?!': 'Chưa chính xác' };
+    const you = cfg().mode === 'ai' ? cfg().human : null;
+    let h = `<div class="an-sum"><div><b>${acc[0]}%</b>${you === 0 ? 'Bạn (Trắng)' : 'Trắng'} – độ chính xác</div><div><b>${acc[1]}%</b>${you === 1 ? 'Bạn (Đen)' : 'Đen'} – độ chính xác</div></div>`;
+    if (!bad.length) h += '<p class="empty-note">Không có sai lầm đáng kể. Ván cờ rất hay! 👏</p>';
+    else {
+      h += '<p class="muted">Bấm vào một nước để xem thế cờ và nước đi tốt hơn.</p>';
+      h += bad.map((i) => `<button class="an-item" data-i="${i}" type="button"><span class="g ${cls[a.grade[i]]}">${a.grade[i]}</span><span><b>Nước ${Math.floor(i / 2) + 1} · ${SIDE_SHORT[side(i)]}: ${G.notes[i]}</b><small>${lbl[a.grade[i]]} – nên đi ${a.best[i] != null ? Eng.notate(G.pos[i], a.best[i]) : '…'}</small></span></button>`).join('');
+    }
+    $('analysisBody').innerHTML = h;
+    $('analysisBody').querySelectorAll('.an-item').forEach((b) => b.addEventListener('click', () => { closeDlg($('analysisDlg')); setView(+b.dataset.i); }));
+    openDlg($('analysisDlg'));
+  }
+
+  // ---------- Bài tập chiếu hết ----------
+  const PZ_KEY = 'cotuong.puzzles';
+  function pzProgress() { try { return JSON.parse(localStorage.getItem(PZ_KEY) || '{}') || {}; } catch (e) { return {}; } }
+  function pzSave(id, stars) {
+    const p = pzProgress();
+    if (!p[id] || p[id] < stars) p[id] = stars;
+    try { localStorage.setItem(PZ_KEY, JSON.stringify(p)); } catch (e) { /* */ }
+  }
+  function renderPuzzles() {
+    const prog = pzProgress(), box = $('puzzlesList');
+    let h = '';
+    for (const n of [1, 2, 3]) {
+      const list = PUZZLES.filter((p) => p.n === n);
+      if (!list.length) continue;
+      const done = list.filter((p) => prog[p.id]).length;
+      h += `<div class="pz-title">Chiếu hết trong ${n} nước <small>(${done}/${list.length})</small></div><div class="pz-grid">`;
+      list.forEach((p, i) => {
+        const st = prog[p.id] || 0;
+        const cur = G.puzzle && G.puzzle.id === p.id ? ' cur' : '';
+        h += `<button class="pz-tile${st ? ' done' : ''}${cur}" data-id="${p.id}" type="button">${i + 1}<small>${st ? '★'.repeat(st) + '☆'.repeat(3 - st) : '&nbsp;'}</small></button>`;
+      });
+      h += '</div>';
+    }
+    box.innerHTML = h;
+  }
+  function openPuzzles() { setSheet(false); renderPuzzles(); openDlg($('puzzlesDlg')); }
+  $('puzzlesList').addEventListener('click', (ev) => {
+    const b = ev.target.closest('.pz-tile'); if (!b) return;
+    closeDlg($('puzzlesDlg')); startPuzzle(b.dataset.id);
+  });
+
+  function startPuzzle(id) {
+    const p = PUZZLES.find((x) => x.id === id);
+    if (!p) return;
+    const { board, side } = Eng.fromFen(p.fen);
+    const g = freshGame({ kind: 'puzzle', first: side, board, cfg: { mode: 'pvp', human: side, level: 0, clock: 0 },
+      puzzle: { id: p.id, n: p.n, att: side, left: p.n, errors: 0, hints: 0, solved: false } });
+    enterSpecial(g, side === 1);
+    render();
+  }
+  function nextPuzzle() {
+    const i = PUZZLES.findIndex((x) => x.id === G.puzzle.id);
+    const next = PUZZLES[(i + 1) % PUZZLES.length];
+    startPuzzle(next.id);
+  }
+  function pzTitle() {
+    const p = G.puzzle, idx = PUZZLES.filter((x) => x.n === p.n).findIndex((x) => x.id === p.id) + 1;
+    return `Bài ${idx} · Chiếu hết trong ${p.n} nước`;
+  }
+
+  function puzzleMove(mv) {
+    const P = G.puzzle;
+    if (P.solved || turn() !== P.att) return false;
+    const st = stateOf(cur());
+    const good = Eng.mateMoves(st, P.att, P.left, true);
+    if (!good.includes(mv)) {
+      P.errors++;
+      SND.bad(); buzz([40, 50, 40]);
+      toast(P.left === P.n ? 'Chưa đúng. Hãy tìm nước ép đối phương vào thế bí!' : 'Chưa đúng, hãy thử nước khác.', true);
+      G.sel = null; G.hint = null; render();
+      return false;
+    }
+    const { cap } = applyRaw(mv);
+    G.anim = { from: mv & 127, to: mv >> 7, cap };
+    G.sel = null; G.hint = null; G.hintText = '';
+    const st2 = stateOf(cur());
+    const def = 1 - P.att;
+    if (!Eng.genLegal(st2, def).length) {
+      P.solved = true;
+      const stars = P.errors === 0 && P.hints === 0 ? 3 : (P.errors <= 2 && P.hints <= 1 ? 2 : 1);
+      P.stars = stars;
+      pzSave(P.id, stars);
+      SND.win(); buzz([60, 60, 120]);
+      render();
+      return true;
+    }
+    SND.check(); buzz([30, 40, 30]);
+    P.left--;
+    G.busy = true;
+    render();
+    const game = G;
+    setTimeout(() => {
+      if (G !== game) return;
+      const reply = Eng.bestDefense(stateOf(cur()), P.att, P.left);
+      const r = applyRaw(reply);
+      G.anim = { from: reply & 127, to: reply >> 7, cap: r.cap };
+      G.busy = false;
+      r.cap ? SND.capture() : SND.move();
+      render();
+    }, 650);
+    return true;
+  }
+
+  function puzzleHint() {
+    const P = G.puzzle;
+    if (P.solved || G.busy || turn() !== P.att) return;
+    const good = Eng.mateMoves(stateOf(cur()), P.att, P.left, true);
+    if (!good.length) return;
+    const mv = good[0];
+    P.hints++;
+    if (P.hints === 1) { G.hint = { from: mv & 127, to: -1 }; G.hintText = '💡 Hãy dùng quân đang được đánh dấu.'; }
+    else { G.hint = { from: mv & 127, to: mv >> 7 }; G.hintText = '💡 Gợi ý: ' + Eng.notate(cur(), mv); }
+    render();
+  }
+
+  function puzzleRetry() { if (G.puzzle) startPuzzle(G.puzzle.id); }
 
   // ---------- Vẽ ----------
   function pieceGroup(p, x, y, parent) {
@@ -495,7 +780,7 @@
   const pieceEls = new Array(90).fill(null);
 
   function renderPieces() {
-    const b = cur();
+    const b = vpos();
     gPieces.textContent = '';
     pieceEls.fill(null);
     const anim = G.anim;
@@ -522,14 +807,14 @@
   }
 
   function renderHighlights() {
-    const b = cur(), t = turn();
+    const b = vpos(), t = vturn(), len = vlen();
     const keep = Array.from(gHl.querySelectorAll('.ghost'));
     gHl.textContent = '';
     keep.forEach((n) => gHl.appendChild(n));
     gMarks.textContent = '';
-    const chk = !G.over && Eng.inCheck(stateOf(b), t);
-    if (G.moves.length) {
-      const lm = G.moves[G.moves.length - 1];
+    const chk = Eng.inCheck(stateOf(b), t);
+    if (len > 0) {
+      const lm = G.moves[len - 1];
       ring(gHl, lm & 127, 26, '#2f6fde', 2.5, { 'stroke-dasharray': '5 4', opacity: .85 });
       ring(gHl, lm >> 7, 29, '#2f6fde', 3.5, { opacity: .9 });
     }
@@ -537,7 +822,7 @@
       const g = stateOf(b).kp[t];
       el('circle', { cx: sqX(g), cy: sqY(g), r: 40, fill: 'url(#glow)', class: 'checkglow' }, gHl);
     }
-    if (G.sel !== null) {
+    if (G.view == null && G.sel !== null) {
       ring(gMarks, G.sel, 30, '#e0a100', 4);
       if (S.hints) {
         for (const mv of G.legal) {
@@ -548,50 +833,71 @@
         }
       }
     }
-    if (G.hint) {
+    if (G.view == null && G.hint) {
       ring(gMarks, G.hint.from, 30, '#1f9b60', 4, { class: 'hintring' });
-      ring(gMarks, G.hint.to, 30, '#1f9b60', 4, { class: 'hintring' });
+      if (G.hint.to >= 0) ring(gMarks, G.hint.to, 30, '#1f9b60', 4, { class: 'hintring' });
+    }
+    // phân tích: chỉ ra nước tốt hơn
+    if (G.view != null && G.analysis && G.analysis.best[G.view] != null && G.view < G.moves.length && G.analysis.grade[G.view]) {
+      const bm = G.analysis.best[G.view];
+      ring(gMarks, bm & 127, 31, '#1f9b60', 4, { class: 'hintring' });
+      ring(gMarks, bm >> 7, 31, '#1f9b60', 4, { class: 'hintring' });
     }
     return chk;
   }
 
   function render() {
-    const b = cur(), t = turn();
-    G.legal = G.over ? [] : Eng.genLegal(stateOf(b), t);
+    const inView = G.view != null;
+    G.legal = (G.over || inView) ? [] : Eng.genLegal(stateOf(cur()), turn());
     renderPieces();
     const chk = renderHighlights();
     renderBars();
     renderStatus(chk);
     renderMoves();
     syncOverlay();
-    $('btnUndo').disabled = !G.moves.length;
-    const cant = !!G.over || G.thinking || G.busy || !humanTurn();
-    $('btnHint').disabled = cant;
+    const special = G.kind !== 'game';
+    $('actionbar').hidden = inView || G.kind === 'puzzle';
+    $('viewbar').hidden = !inView;
+    $('puzzlebar').hidden = !(G.kind === 'puzzle' && !inView);
+    $('vbAuto').firstElementChild.textContent = G.auto ? '⏸' : '⏵';
+    $('vbDone').firstElementChild.textContent = G.kind === 'replay' ? 'Thoát' : 'Xong';
+    $('btnUndo').disabled = !G.moves.length || special || inView;
+    const cant = !!G.over || G.thinking || G.busy || !humanTurn() || inView || special;
+    $('btnHint').disabled = (G.kind === 'puzzle' ? false : cant);
     $('btnDraw').disabled = cant;
-    $('btnResign').disabled = !!G.over;
+    $('btnResign').disabled = !!G.over || special;
+    $('btnAnalyze').disabled = !canAnalyze();
+    $('btnFlip').disabled = false;
   }
 
   function capturedBy(side) {
     const out = [];
-    G.caps.forEach((c, i) => { if (c && (i & 1) === side) out.push(c); });
+    const len = vlen();
+    G.caps.forEach((c, i) => { if (c && i < len && ((G.first + i) & 1) === side) out.push(c); });
     out.sort((a, b) => (b & 7) - (a & 7));
     return out;
   }
 
   function renderBars() {
     const bottomSide = S.flipped ? 1 : 0, topSide = 1 - bottomSide;
+    const c = cfg();
     const fill = (id, side) => {
       const bar = $(id);
-      const isAI = S.mode === 'ai' && side !== S.human;
-      const who = S.mode === 'pvp' ? 'Người chơi' : (isAI ? 'Máy' : 'Bạn');
-      const active = !G.over && turn() === side;
+      const isAI = c.mode === 'ai' && side !== c.human;
+      let who = c.mode === 'pvp' ? 'Người chơi' : (isAI ? 'Máy' : 'Bạn');
+      let tag = SIDE_NAME[side] + (isAI ? ` · ${LEVELS[c.level].name}` : '');
+      if (G.kind === 'puzzle') {
+        const att = G.puzzle.att === side;
+        who = att ? 'Bạn (bên tấn công)' : 'Đối phương';
+        tag = SIDE_NAME[side];
+      }
+      const active = !G.over && G.view == null && turn() === side;
       bar.className = 'pbar ' + (id === 'barTop' ? 'top' : 'bottom') + (active ? ' active' : '');
       const think = isAI && G.thinking ? ' <span class="spinner" title="Đang nghĩ"></span>' : '';
       const vi = S.pieceStyle === 'vi' ? ' vi' : '';
-      const caps = capturedBy(side).map((c) => `<span class="${(c >> 3) === 0 ? 'w' : 'b'}${vi}" title="${PIECE_NAME[c & 7]}">${glyph(c >> 3, c & 7)}</span>`).join('');
-      const lvl = isAI ? ` · ${LEVELS[S.level].name}` : '';
+      const caps = capturedBy(side).map((p) => `<span class="${(p >> 3) === 0 ? 'w' : 'b'}${vi}" title="${PIECE_NAME[p & 7]}">${glyph(p >> 3, p & 7)}</span>`).join('');
       const clock = G.clock.on ? `<span class="clock" data-side="${side}"></span>` : '';
-      bar.innerHTML = `<span class="dot ${side === 0 ? 'w' : 'b'}"></span><span class="who"><span class="nm">${who}${think}</span><span class="tag">${SIDE_NAME[side]}${lvl}</span></span><span class="caps" aria-label="Quân đã ăn">${caps}</span>${clock}`;
+      bar.innerHTML = `<span class="dot ${side === 0 ? 'w' : 'b'}"></span><span class="who"><span class="nm">${who}${think}</span><span class="tag">${tag}</span></span><span class="caps" aria-label="Quân đã ăn">${caps}</span>${clock}`;
     };
     fill('barTop', topSide);
     fill('barBottom', bottomSide);
@@ -600,47 +906,98 @@
 
   function renderStatus(chk) {
     const s = $('status');
-    if (G.over) {
+    let hintText = G.hintText || '';
+    if (G.kind === 'puzzle' && !G.view) {
+      const P = G.puzzle;
+      s.innerHTML = '';
+      if (P.solved) s.textContent = '🎉 Chiếu hết rồi! ' + '★'.repeat(P.stars) + '☆'.repeat(3 - P.stars);
+      else s.textContent = `${pzTitle()} – ${SIDE_SHORT[P.att]} đi trước${P.n > 1 ? ' (còn ' + P.left + ' nước)' : ''}`;
+    } else if (G.view != null) {
+      const n = G.moves.length;
+      s.textContent = (G.kind === 'replay' ? 'Xem lại ván' : 'Đang xem') + ` · nước ${G.view}/${n}`;
+      if (G.analysis && G.view < n && G.analysis.grade[G.view]) {
+        const bm = G.analysis.best[G.view];
+        hintText = `⚠ ${G.notes[G.view]} (${G.analysis.grade[G.view]}) – nên đi ${bm != null ? Eng.notate(G.pos[G.view], bm) : '…'}`;
+      }
+    } else if (G.over) {
       s.textContent = G.over.winner === null ? 'Ván cờ hòa' : `${SIDE_NAME[G.over.winner]} thắng`;
     } else if (G.thinking) {
       s.innerHTML = '<span class="spinner"></span> Máy đang suy nghĩ…';
     } else {
       const t = turn();
       let txt = `Lượt đi: ${SIDE_NAME[t]}`;
-      if (S.mode === 'ai') txt = t === S.human ? `Đến lượt bạn (${SIDE_NAME[t]})` : `Lượt của máy (${SIDE_NAME[t]})`;
+      if (cfg().mode === 'ai') txt = t === cfg().human ? `Đến lượt bạn (${SIDE_NAME[t]})` : `Lượt của máy (${SIDE_NAME[t]})`;
       s.innerHTML = '';
       s.appendChild(document.createTextNode(txt));
       if (chk) { const bd = document.createElement('span'); bd.className = 'badge'; bd.textContent = 'CHIẾU TƯỚNG!'; s.appendChild(bd); }
     }
-    $('hintText').textContent = G.hintText || '';
+    $('hintText').textContent = hintText;
   }
 
   function renderMoves() {
     const box = $('moves');
     if (!G.notes.length) { box.innerHTML = '<div class="empty">Chưa có nước đi nào.</div>'; return; }
+    const cells = G.notes.map((nt, i) => ({ nt, i }));
+    if (G.first === 1) cells.unshift(null);
+    const mark = G.view == null ? G.notes.length - 1 : G.view - 1;
+    const clickable = G.over || G.kind === 'replay' || G.view != null;
+    const cell = (c) => {
+      if (!c) return '<td></td>';
+      const gr = G.analysis && G.analysis.grade[c.i];
+      const gm = gr ? `<span class="gm ${gr === '??' ? 'g-bad' : gr === '?' ? 'g-mid' : 'g-low'}">${gr}</span>` : '';
+      return `<td${c.i === mark ? ' class="cur"' : ''}${clickable ? ` data-i="${c.i + 1}"` : ''}>${c.nt}${gm}</td>`;
+    };
     let h = '<table><thead><tr><th></th><th>Trắng</th><th>Đen</th></tr></thead><tbody>';
-    const last = G.notes.length - 1;
-    for (let i = 0; i < G.notes.length; i += 2) {
-      h += `<tr><td class="n">${i / 2 + 1}.</td><td${i === last ? ' class="cur"' : ''}>${G.notes[i]}</td><td${i + 1 === last ? ' class="cur"' : ''}>${G.notes[i + 1] || ''}</td></tr>`;
-    }
+    for (let k = 0; k < cells.length; k += 2) h += `<tr><td class="n">${k / 2 + 1}.</td>${cell(cells[k])}${cell(cells[k + 1])}</tr>`;
     box.innerHTML = h + '</tbody></table>';
-    box.scrollTop = box.scrollHeight;
+    const cur = box.querySelector('td.cur');
+    if (cur && G.view != null) cur.scrollIntoView({ block: 'nearest' }); else box.scrollTop = box.scrollHeight;
   }
+  $('moves').addEventListener('click', (ev) => {
+    const td = ev.target.closest('td[data-i]');
+    if (td) { setView(+td.dataset.i); setSheet(false); }
+  });
 
   function syncOverlay() {
     const ov = $('overlay');
-    if (!G.over || G.viewing) { ov.hidden = true; return; }
+    const puz = G.kind === 'puzzle' && G.puzzle.solved && G.view == null;
+    const over = G.kind === 'game' && G.over && !G.viewing && G.view == null;
+    if (!puz && !over) { ov.hidden = true; return; }
     ov.hidden = false;
-    let title;
-    if (G.over.winner === null) title = '🤝 Ván cờ hòa';
-    else if (S.mode === 'ai') title = G.over.winner === S.human ? '🎉 Bạn thắng!' : '😅 Máy thắng';
-    else title = `🎉 ${SIDE_NAME[G.over.winner]} thắng!`;
-    $('ovTitle').textContent = title;
-    $('ovText').textContent = G.over.text;
+    const btns = ov.querySelector('.row');
+    if (puz) {
+      const P = G.puzzle;
+      $('ovTitle').textContent = '🎉 Giải đúng!';
+      $('ovText').textContent = `${'★'.repeat(P.stars)}${'☆'.repeat(3 - P.stars)}  ${P.errors ? 'Bạn thử sai ' + P.errors + ' lần. ' : 'Không sai nước nào! '}${P.hints ? 'Đã dùng gợi ý ' + P.hints + ' lần.' : ''}`;
+      btns.innerHTML = '<button class="primary" data-ov="next" type="button">Bài tiếp ▶</button><button data-ov="retry" type="button">Làm lại</button><button data-ov="list" type="button">Danh sách</button>';
+    } else {
+      let title;
+      if (G.over.winner === null) title = '🤝 Ván cờ hòa';
+      else if (cfg().mode === 'ai') title = G.over.winner === cfg().human ? '🎉 Bạn thắng!' : '😅 Máy thắng';
+      else title = `🎉 ${SIDE_NAME[G.over.winner]} thắng!`;
+      $('ovTitle').textContent = title;
+      $('ovText').textContent = G.over.text;
+      btns.innerHTML = '<button class="primary" data-ov="new" type="button">Ván mới</button><button data-ov="view" type="button">Xem lại</button><button data-ov="analyze" type="button">🔍 Phân tích</button>';
+    }
   }
+  $('overlay').addEventListener('click', (ev) => {
+    const b = ev.target.closest('button[data-ov]'); if (!b) return;
+    const a = b.dataset.ov;
+    if (a === 'new') openNew();
+    else if (a === 'view') setView(G.moves.length);
+    else if (a === 'analyze') openAnalysis();
+    else if (a === 'next') nextPuzzle();
+    else if (a === 'retry') puzzleRetry();
+    else if (a === 'list') openPuzzles();
+  });
 
   // ---------- Tương tác: bấm và kéo thả ----------
-  const canInteract = () => !G.over && !G.thinking && !G.busy && humanTurn() && !anyDialogOpen();
+  const canInteract = () => {
+    if (G.over || G.thinking || G.busy || G.view != null || anyDialogOpen()) return false;
+    if (G.kind === 'puzzle') return turn() === G.puzzle.att;
+    if (G.kind !== 'game') return false;
+    return humanTurn();
+  };
   let drag = null;
   const LIFT = -34; // khi kéo bằng ngón tay, nhấc quân lên để ngón không che
 
@@ -710,16 +1067,29 @@
   // ---------- Nút bấm ----------
   $('btnNew').addEventListener('click', openNew);
   $('btnNew2').addEventListener('click', openNew);
-  $('ovNew').addEventListener('click', openNew);
-  $('ovView').addEventListener('click', () => { G.viewing = true; render(); });
   $('btnUndo').addEventListener('click', undo);
   $('btnHint').addEventListener('click', hint);
   $('btnDraw').addEventListener('click', offerDraw);
   $('btnResign').addEventListener('click', resign);
   $('btnFlip').addEventListener('click', () => { flip(); setSheet(false); });
   $('btnMenu').addEventListener('click', () => setSheet(true));
+  $('btnTrain').addEventListener('click', openPuzzles);
+  $('btnTrain2').addEventListener('click', openPuzzles);
+  $('btnGames').addEventListener('click', openGames);
+  $('btnAnalyze').addEventListener('click', openAnalysis);
   $('sheetClose').addEventListener('click', () => setSheet(false));
   $('sheetBackdrop').addEventListener('click', () => setSheet(false));
+  $('vbStart').addEventListener('click', () => { stopAuto(); setView(0); });
+  $('vbPrev').addEventListener('click', () => { stopAuto(); setView(vlen() - 1); });
+  $('vbNext').addEventListener('click', () => { stopAuto(); setView(vlen() + 1, true); });
+  $('vbEnd').addEventListener('click', () => { stopAuto(); setView(G.moves.length); });
+  $('vbAuto').addEventListener('click', toggleAuto);
+  $('vbDone').addEventListener('click', exitView);
+  $('pzHint').addEventListener('click', hint);
+  $('pzRetry').addEventListener('click', puzzleRetry);
+  $('pzNext').addEventListener('click', nextPuzzle);
+  $('pzList').addEventListener('click', openPuzzles);
+  $('pzExit').addEventListener('click', () => leaveSpecial(false));
   const openRules = () => { setSheet(false); openDlg($('rulesDlg')); };
   $('btnRules').addEventListener('click', openRules);
   $('btnRules2').addEventListener('click', openRules);
@@ -730,7 +1100,13 @@
   $('chkSound').addEventListener('change', () => { S.sound = $('chkSound').checked; saveSettings(); });
   $('chkVibe').addEventListener('change', () => { S.vibe = $('chkVibe').checked; saveSettings(); buzz(30); });
   $('selStyle').addEventListener('change', () => { S.pieceStyle = $('selStyle').value === 'vi' ? 'vi' : 'han'; saveSettings(); render(); });
-  window.addEventListener('keydown', (e) => { if (e.key === 'Escape') setSheet(false); });
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') setSheet(false);
+    if (G && G.view != null && !anyDialogOpen()) {
+      if (e.key === 'ArrowLeft') setView(G.view - 1);
+      else if (e.key === 'ArrowRight') setView(G.view + 1, true);
+    }
+  });
 
   // hộp thoại ván mới
   let ng = { mode: 'ai', human: '0', level: '1', clock: '0' };
@@ -754,9 +1130,10 @@
   // ---------- Lưu / tải ----------
   function saveSettings() { try { localStorage.setItem('cotuong.settings', JSON.stringify(S)); } catch (e) { /* */ } }
   function saveGame() {
+    if (!G || !isGame()) return;
     try {
       localStorage.setItem('cotuong.settings', JSON.stringify(S));
-      localStorage.setItem('cotuong.game', JSON.stringify({ moves: G.moves, over: G.over, clock: G.clock.on ? G.clock.t : null }));
+      localStorage.setItem('cotuong.game', JSON.stringify({ id: G.id, cfg: G.cfg, moves: G.moves, over: G.over, clock: G.clock.on ? G.clock.t : null }));
     } catch (e) { /* */ }
   }
   function loadSaved() {
@@ -770,7 +1147,11 @@
       });
       const g = JSON.parse(localStorage.getItem('cotuong.game') || 'null');
       if (g && Array.isArray(g.moves) && g.moves.length) {
-        G = freshGame();
+        const c = g.cfg || { mode: S.mode, human: S.human, level: S.level, clock: S.clock };
+        G = freshGame({ cfg: { mode: c.mode === 'pvp' ? 'pvp' : 'ai', human: c.human === 1 ? 1 : 0, level: Math.min(3, Math.max(0, c.level | 0)), clock: c.clock | 0 } });
+        if (g.id) G.id = g.id;
+        const ms = G.cfg.clock * 60000;
+        G.clock = { on: ms > 0, t: [ms, ms], last: null };
         for (const mv of g.moves) {
           if (!Eng.genLegal(stateOf(cur()), turn()).includes(mv)) throw new Error('ván lưu không hợp lệ');
           applyRaw(mv);
@@ -795,5 +1176,5 @@
   render();
   if (!G.over) maybeAI();
   if (!resumed) setTimeout(() => { ng = { mode: S.mode, human: String(S.human), level: String(S.level), clock: String(S.clock) }; syncNewDlg(); openDlg($('newDlg')); }, 350);
-  window.__cotuong = { Eng, get G() { return G; }, S, tryMove, render, newGame, geom: { CELL, M, BW, BH }, sqXY: (sq) => [sqX(sq), sqY(sq)] }; // phục vụ kiểm thử
+  window.__cotuong = { Eng, get G() { return G; }, S, tryMove, render, newGame, setView, startPuzzle, startReplay, openAnalysis, loadArchive, geom: { CELL, M, BW, BH }, sqXY: (sq) => [sqX(sq), sqY(sq)] }; // phục vụ kiểm thử
 })();

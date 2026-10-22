@@ -7,9 +7,12 @@ src = root / 'src'
 tpl = (src / 'template.html').read_text(encoding='utf-8')
 engine = (src / 'engine.js').read_text(encoding='utf-8')
 engine = engine.replace("if (typeof module !== 'undefined') module.exports = createEngine;", '')
+puzzles_file = src / 'puzzles.js'
+puzzles = puzzles_file.read_text(encoding='utf-8') if puzzles_file.exists() else 'const PUZZLES = [];'
 out = (tpl
        .replace('/*__CSS__*/', (src / 'style.css').read_text(encoding='utf-8'))
        .replace('/*__ENGINE__*/', engine)
+       .replace('/*__PUZZLES__*/', puzzles)
        .replace('/*__APP__*/', (src / 'app.js').read_text(encoding='utf-8')))
 import shutil
 pub = root / 'public'
