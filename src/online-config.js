@@ -5,5 +5,5 @@
  */
 const ONLINE_CONFIG = (typeof window !== 'undefined' && window.__ONLINE_CONFIG) || {
   apiKey: 'AIzaSyCFaKDvDhQ6ueHgiqd1iTObUitSx0uHpLM', // dự án Firebase: cotuong-61856
-  databaseURL: '', // ĐIỀN VÀO: địa chỉ Realtime Database, ví dụ https://cotuong-61856-default-rtdb.asia-southeast1.firebasedatabase.app
+  databaseURL: 'https://cotuong-61856-default-rtdb.asia-southeast1.firebasedatabase.app',
 };
