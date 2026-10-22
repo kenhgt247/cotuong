@@ -15,8 +15,8 @@ const url = 'file://' + path.resolve(__dirname, '../co-tuong.html');
     S.mode = 'pvp';
     const out = [];
     for (let g = 0; g < games; g++) {
-      document.getElementById('selMode').value = 'pvp';
-      newGame(false);
+      S.clock = 0;
+      newGame();
       let G = window.__cotuong.G, guard = 0;
       while (!G.over && guard++ < 400) {
         const b = G.pos[G.pos.length - 1], t = G.moves.length & 1;

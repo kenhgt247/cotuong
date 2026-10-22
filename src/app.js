@@ -28,14 +28,16 @@
   const BW = 8 * CELL + 2 * M, BH = 9 * CELL + 2 * M;
 
   // ---------- Trạng thái ----------
-  const S = { mode: 'ai', human: 0, level: 1, hints: true, sound: true, flipped: false, pieceStyle: 'han' };
+  const S = { mode: 'ai', human: 0, level: 1, clock: 0, hints: true, sound: true, vibe: true, flipped: false, pieceStyle: 'han' };
   let G = null;
   let aiToken = 0;
 
   function freshGame() {
     const b = Eng.initialBoard();
+    const ms = S.clock * 60000;
     return { pos: [b], moves: [], notes: [], keys: [Eng.boardKey(b, 0)], caps: [], over: null,
-      sel: null, legal: [], hint: null, hintText: '', thinking: false, busy: false, anim: null, viewing: false };
+      sel: null, legal: [], hint: null, hintText: '', thinking: false, busy: false, anim: null, viewing: false,
+      clock: { on: S.clock > 0, t: [ms, ms], last: null } };
   }
   const cur = () => G.pos[G.pos.length - 1];
   const turn = () => G.moves.length & 1;
@@ -56,8 +58,8 @@
   el('stop', { offset: '0', 'stop-color': '#fff8e1' }, rg);
   el('stop', { offset: '1', 'stop-color': '#e3bf7c' }, rg);
   const gb = el('linearGradient', { id: 'wood', x1: '0', y1: '0', x2: '1', y2: '1' }, defs);
-  el('stop', { offset: '0', 'stop-color': '#f0cf8e' }, gb);
-  el('stop', { offset: '1', 'stop-color': '#dcae62' }, gb);
+  el('stop', { offset: '0', 'stop-color': '#f2d293' }, gb);
+  el('stop', { offset: '1', 'stop-color': '#dba95b' }, gb);
   const gg = el('radialGradient', { id: 'glow' }, defs);
   el('stop', { offset: '0', 'stop-color': '#ff3b30', 'stop-opacity': '.85' }, gg);
   el('stop', { offset: '1', 'stop-color': '#ff3b30', 'stop-opacity': '0' }, gg);
@@ -75,7 +77,8 @@
   const X = (c) => M + c * CELL, Y = (r) => M + r * CELL;
 
   function drawGrid() {
-    el('rect', { x: 0, y: 0, width: BW, height: BH, rx: 14, fill: 'url(#wood)' }, gGrid);
+    el('rect', { x: 0, y: 0, width: BW, height: BH, rx: 18, fill: 'url(#wood)' }, gGrid);
+    el('rect', { x: 3, y: 3, width: BW - 6, height: BH - 6, rx: 16, fill: 'none', stroke: '#8a5a22', 'stroke-width': 3 }, gGrid);
     el('rect', { x: M - 10, y: M - 10, width: 8 * CELL + 20, height: 9 * CELL + 20, fill: 'none', stroke: '#5a3a14', 'stroke-width': 3 }, gGrid);
     for (let r = 0; r < 10; r++) line(X(0), Y(r), X(8), Y(r));
     for (let c = 0; c < 9; c++) {
@@ -95,40 +98,38 @@
     };
     [[2, 1], [2, 7], [7, 1], [7, 7]].forEach(([r, c]) => tick(r, c));
     [0, 2, 4, 6, 8].forEach((c) => { tick(3, c); tick(6, c); });
-    const t1 = el('text', { x: X(2) + 4, y: Y(4.5), 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': 26, fill: '#6b4518', 'font-family': 'KaiTi,STKaiti,"Noto Serif CJK SC",serif', 'letter-spacing': 6 }, gGrid);
-    t1.textContent = '楚河';
-    const t2 = el('text', { x: X(6) - 4, y: Y(4.5), 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': 26, fill: '#6b4518', 'font-family': 'KaiTi,STKaiti,"Noto Serif CJK SC",serif', 'letter-spacing': 6 }, gGrid);
-    t2.textContent = '漢界';
+    const river = { y: Y(4.5), 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': 26, fill: '#6b4518', 'font-family': 'KaiTi,STKaiti,"Noto Serif CJK SC",serif', 'letter-spacing': 6 };
+    el('text', Object.assign({ x: X(2) + 4 }, river), gGrid).textContent = '楚河';
+    el('text', Object.assign({ x: X(6) - 4 }, river), gGrid).textContent = '漢界';
   }
   drawGrid();
 
-  function drawLabels() {
-    gLabels.textContent = '';
+  (function drawLabels() {
     for (let dc = 0; dc < 9; dc++) {
-      const top = el('text', { x: X(dc), y: M - 31, 'text-anchor': 'middle', 'font-size': 15, fill: '#6b4518', 'font-weight': 600 }, gLabels);
-      top.textContent = dc + 1;
-      const bot = el('text', { x: X(dc), y: BH - M + 38, 'text-anchor': 'middle', 'font-size': 15, fill: '#6b4518', 'font-weight': 600 }, gLabels);
-      bot.textContent = 9 - dc;
+      const st = { 'text-anchor': 'middle', 'font-size': 15, fill: '#6b4518', 'font-weight': 600 };
+      el('text', Object.assign({ x: X(dc), y: M - 31 }, st), gLabels).textContent = dc + 1;
+      el('text', Object.assign({ x: X(dc), y: BH - M + 38 }, st), gLabels).textContent = 9 - dc;
     }
-  }
-  drawLabels();
+  })();
 
   const flipR = (r) => (S.flipped ? 9 - r : r);
   const flipC = (c) => (S.flipped ? 8 - c : c);
   const sqX = (sq) => X(flipC(COL[sq]));
   const sqY = (sq) => Y(flipR(ROW[sq]));
 
-  function hitSquare(ev) {
-    const rect = svg.getBoundingClientRect();
-    const x = ((ev.clientX - rect.left) * BW) / rect.width;
-    const y = ((ev.clientY - rect.top) * BH) / rect.height;
+  function svgPoint(ev) {
+    const pt = svg.createSVGPoint();
+    pt.x = ev.clientX; pt.y = ev.clientY;
+    const m = svg.getScreenCTM();
+    return m ? pt.matrixTransform(m.inverse()) : { x: 0, y: 0 };
+  }
+  function sqAt(x, y) {
     const dc = Math.round((x - M) / CELL), dr = Math.round((y - M) / CELL);
     if (dc < 0 || dc > 8 || dr < 0 || dr > 9) return -1;
-    const c = S.flipped ? 8 - dc : dc, r = S.flipped ? 9 - dr : dr;
-    return r * 9 + c;
+    return (S.flipped ? 9 - dr : dr) * 9 + (S.flipped ? 8 - dc : dc);
   }
 
-  // ---------- Âm thanh ----------
+  // ---------- Âm thanh & rung ----------
   let actx = null;
   function tone(freq, dur, type, vol, delay) {
     if (!S.sound) return;
@@ -153,8 +154,9 @@
     lose() { [392, 330, 262].forEach((f, i) => tone(f, 0.28, 'triangle', 0.18, i * 0.18)); },
     bad() { tone(160, 0.18, 'sawtooth', 0.12); },
   };
+  function buzz(p) { if (S.vibe && navigator.vibrate) { try { navigator.vibrate(p); } catch (e) { /* */ } } }
 
-  // ---------- Thông báo ngắn ----------
+  // ---------- Thông báo, hộp thoại ----------
   let toastTimer = 0;
   function toast(msg, warn, ms) {
     const t = $('toast');
@@ -163,6 +165,22 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => { t.className = ''; }, ms || 3200);
   }
+  function openDlg(d) { if (d.showModal) { if (!d.open) d.showModal(); } else d.setAttribute('open', ''); }
+  function closeDlg(d) { if (d.close) d.close(); else d.removeAttribute('open'); }
+  const anyDialogOpen = () => document.querySelector('dialog[open]') !== null;
+  function askConfirm(title, text, yes, no) {
+    return new Promise((resolve) => {
+      $('cfTitle').textContent = title; $('cfText').textContent = text;
+      $('cfYes').textContent = yes || 'Đồng ý'; $('cfNo').textContent = no || 'Không';
+      const d = $('confirmDlg');
+      const done = (v) => { $('cfYes').onclick = $('cfNo').onclick = null; d.onclose = null; closeDlg(d); resolve(v); };
+      $('cfYes').onclick = () => done(true);
+      $('cfNo').onclick = () => done(false);
+      d.onclose = () => resolve(false);
+      openDlg(d);
+    });
+  }
+  function setSheet(open) { document.body.classList.toggle('sheet-open', open); }
 
   // ---------- Web Worker cho máy suy nghĩ ----------
   let worker = null, jobId = 0;
@@ -227,12 +245,12 @@
     const mover = G.moves.length & 1;
     const board = cur();
     const st2 = stateOf(board);
-    const capped = Eng.makeMove(st2, mv);
+    Eng.makeMove(st2, mv);
     const key = Eng.boardKey(st2.b, 1 - mover);
     let verdict = null;
     if (countKey(key) >= 2) verdict = repetitionVerdict(key, mv, st2.b, mover);
     if (verdict && verdict.kind === 'mover-loses' && byHuman) {
-      SND.bad();
+      SND.bad(); buzz([40, 50, 40]);
       toast(`Nước này lặp lại thế cờ lần thứ 3 và là ${REASON[verdict.reason]} – phạm luật! Hãy đổi nước đi khác.`, true, 5200);
       G.sel = null; render();
       return false;
@@ -243,9 +261,10 @@
       if (w.viol[mover] && !w.viol[1 - mover]) warn = w.viol[mover];
     }
     const { cap } = applyRaw(mv);
-    G.anim = { from: mv & 127, to: mv >> 7 };
+    G.anim = { from: mv & 127, to: mv >> 7, cap };
     G.sel = null; G.hint = null; G.hintText = '';
     G.thinking = false;
+    if (G.clock.on) G.clock.last = Date.now();
     afterMove(verdict, cap, mover);
     if (warn && !G.over) toast(`⚠ Bạn đang ${REASON[warn]} và thế cờ đã lặp lại. Nếu lặp lại lần nữa bạn sẽ bị xử thua – hãy đổi nước đi!`, true, 6500);
     return true;
@@ -253,43 +272,39 @@
 
   function afterMove(verdict, cap, mover) {
     const t = turn();
-    const st = stateOf(cur());
-    const chk = Eng.inCheck(st, t);
+    const chk = Eng.inCheck(stateOf(cur()), t);
     if (verdict) {
-      if (verdict.kind === 'opp-loses') {
-        finish(mover, `${SIDE_NAME[1 - mover]} phạm luật ${REASON[verdict.reason]} nên bị xử thua.`);
-      } else if (verdict.kind === 'mover-loses') {
-        finish(1 - mover, `${SIDE_NAME[mover]} phạm luật ${REASON[verdict.reason]} nên bị xử thua.`);
-      } else if (verdict.both) {
-        finish(null, 'Hai bên cùng phạm luật chiếu mãi / bắt mãi nên ván cờ được xử hòa.');
-      } else {
-        finish(null, 'Thế cờ lặp lại 3 lần mà không bên nào phạm luật nên ván cờ hòa.');
-      }
-    } else {
-      checkEnd(chk);
-    }
+      if (verdict.kind === 'opp-loses') finish(mover, `${SIDE_NAME[1 - mover]} phạm luật ${REASON[verdict.reason]} nên bị xử thua.`);
+      else if (verdict.kind === 'mover-loses') finish(1 - mover, `${SIDE_NAME[mover]} phạm luật ${REASON[verdict.reason]} nên bị xử thua.`);
+      else if (verdict.both) finish(null, 'Hai bên cùng phạm luật chiếu mãi / bắt mãi nên ván cờ được xử hòa.');
+      else finish(null, 'Thế cờ lặp lại 3 lần mà không bên nào phạm luật nên ván cờ hòa.');
+    } else checkEnd(chk);
     if (!G.over) {
-      if (chk) SND.check(); else if (cap) SND.capture(); else SND.move();
+      if (chk) { SND.check(); buzz([30, 40, 30]); } else if (cap) { SND.capture(); buzz(28); } else { SND.move(); buzz(12); }
     }
     render();
-    if (!G.over) { saveGame(); maybeAI(); } else saveGame();
+    saveGame();
+    if (!G.over) maybeAI();
+  }
+
+  function hasAttackers(side) {
+    const b = cur();
+    for (let sq = 0; sq < 90; sq++) {
+      const p = b[sq];
+      if (p && (p >> 3) === side) { const ty = p & 7; if (ty === Eng.R || ty === Eng.C || ty === Eng.H || ty === Eng.P) return true; }
+    }
+    return false;
   }
 
   function checkEnd(chk) {
     const t = turn();
     const b = cur();
-    const st = stateOf(b);
-    if (!Eng.genLegal(st, t).length) {
+    if (!Eng.genLegal(stateOf(b), t).length) {
       if (chk) finish(1 - t, `Chiếu bí! ${SIDE_NAME[1 - t]} thắng.`);
       else finish(1 - t, `Tướng ${SIDE_SHORT[t]} bị vây chặt, không còn nước đi nên ${SIDE_NAME[t]} thua.`);
       return;
     }
-    let attackers = 0;
-    for (let sq = 0; sq < 90; sq++) {
-      const ty = b[sq] & 7;
-      if (b[sq] && (ty === Eng.R || ty === Eng.C || ty === Eng.H || ty === Eng.P)) attackers++;
-    }
-    if (!attackers) { finish(null, 'Hai bên đều không còn Xe, Pháo, Mã, Tốt để tấn công nên ván cờ hòa.'); return; }
+    if (!hasAttackers(0) && !hasAttackers(1)) { finish(null, 'Hai bên đều không còn Xe, Pháo, Mã, Tốt để tấn công nên ván cờ hòa.'); return; }
     let since = 0;
     for (let i = G.caps.length - 1; i >= 0 && !G.caps[i]; i--) since++;
     if (since >= 100) finish(null, '50 nước liên tiếp không bên nào ăn quân nên ván cờ hòa.');
@@ -297,13 +312,45 @@
 
   function finish(winner, text) {
     G.over = { winner, text };
-    G.thinking = false; G.sel = null; G.hint = null; G.hintText = '';
+    G.thinking = false; G.busy = false; G.sel = null; G.hint = null; G.hintText = '';
     aiToken++;
     if (winner === null) { SND.move(); }
     else if (S.mode === 'ai') { winner === S.human ? SND.win() : SND.lose(); }
     else SND.win();
+    buzz(winner === null ? 20 : [60, 60, 120]);
     G.viewing = false;
   }
+
+  // ---------- Đồng hồ ----------
+  const fmtClock = (ms) => {
+    const s = Math.max(0, Math.ceil(ms / 1000));
+    return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  };
+  function updateClocks() {
+    const c = G.clock;
+    for (let side = 0; side < 2; side++) {
+      const e = document.querySelector(`.clock[data-side="${side}"]`);
+      if (!e) continue;
+      e.textContent = fmtClock(c.t[side]);
+      e.classList.toggle('low', c.t[side] < 30000);
+      e.classList.toggle('run', !G.over && turn() === side);
+    }
+  }
+  setInterval(() => {
+    const c = G && G.clock;
+    if (!c || !c.on || G.over) { if (c) c.last = null; return; }
+    const now = Date.now(), t = turn();
+    if (c.last != null) c.t[t] -= now - c.last;
+    c.last = now;
+    if (c.t[t] <= 0) {
+      c.t[t] = 0;
+      if (hasAttackers(1 - t)) finish(1 - t, `${SIDE_NAME[t]} hết giờ nên bị xử thua.`);
+      else finish(null, `${SIDE_NAME[t]} hết giờ nhưng đối phương không đủ quân để chiếu bí nên ván cờ hòa.`);
+      render(); saveGame();
+      return;
+    }
+    updateClocks();
+  }, 250);
 
   // ---------- Máy suy nghĩ ----------
   function aiOverride() {
@@ -325,10 +372,9 @@
     G.thinking = true;
     render();
     const token = ++aiToken;
-    const lv = LEVELS[S.level];
-    const opening = G.moves.length < 4;
-    const opts = Object.assign({}, lv, { override: aiOverride() });
-    if (opening && S.level >= 1) { opts.exact = true; opts.margin = 40; opts.maxDepth = Math.min(opts.maxDepth, 3); opts.timeMs = 800; }
+    const opts = Object.assign({}, LEVELS[S.level], { override: aiOverride() });
+    if (G.moves.length < 4 && S.level >= 1) { opts.exact = true; opts.margin = 40; opts.maxDepth = Math.min(opts.maxDepth, 3); opts.timeMs = 800; }
+    if (G.clock.on) opts.timeMs = Math.max(250, Math.min(opts.timeMs, G.clock.t[turn()] / 25));
     const t0 = Date.now();
     runSearch(cur(), turn(), opts).then((res) => {
       if (token !== aiToken) return;
@@ -344,18 +390,30 @@
 
   function cancelAI() { aiToken++; G.thinking = false; G.busy = false; resetWorker(); }
 
-  // ---------- Nút chức năng ----------
-  function newGame(keepSettings) {
+  // ---------- Chức năng ----------
+  function newGame() {
     cancelAI();
-    if (!keepSettings) {
-      S.mode = $('selMode').value; S.human = +$('selSide').value; S.level = +$('selLevel').value;
-      S.flipped = S.mode === 'ai' && S.human === 1;
-    }
     G = freshGame();
-    syncControls();
     render();
     saveGame();
     maybeAI();
+  }
+
+  function startFromDialog() {
+    S.mode = ng.mode; S.human = +ng.human; S.level = +ng.level; S.clock = +ng.clock;
+    S.flipped = S.mode === 'ai' && S.human === 1;
+    closeDlg($('newDlg')); setSheet(false);
+    newGame();
+  }
+
+  async function openNew() {
+    if (G.moves.length >= 2 && !G.over) {
+      if (!(await askConfirm('Bỏ ván đang chơi?', 'Ván cờ hiện tại chưa kết thúc. Bạn muốn bắt đầu ván mới?', 'Ván mới', 'Chơi tiếp'))) return;
+    }
+    ng = { mode: S.mode, human: String(S.human), level: String(S.level), clock: String(S.clock) };
+    syncNewDlg();
+    setSheet(false);
+    openDlg($('newDlg'));
   }
 
   function undo() {
@@ -366,6 +424,7 @@
     popOne();
     if (S.mode === 'ai') while (turn() !== S.human && G.moves.length) popOne();
     G.sel = null; G.hint = null; G.hintText = ''; G.anim = null; G.viewing = false;
+    if (G.clock.on) G.clock.last = Date.now();
     render(); saveGame(); maybeAI();
   }
 
@@ -386,7 +445,7 @@
   async function offerDraw() {
     if (G.over || G.thinking || G.busy || !humanTurn()) return;
     if (S.mode === 'pvp') {
-      if (confirm(`${SIDE_SHORT[1 - turn()]} có đồng ý hòa không?`)) { finish(null, 'Hai bên thỏa thuận hòa.'); render(); saveGame(); }
+      if (await askConfirm('Xin hòa', `${SIDE_SHORT[1 - turn()]} có đồng ý hòa không?`, 'Đồng ý hòa', 'Không')) { finish(null, 'Hai bên thỏa thuận hòa.'); render(); saveGame(); }
       return;
     }
     if (G.moves.length < 10) { toast('Mới đi ít nước quá, máy chưa đồng ý hòa. Hãy chơi thêm nhé!'); return; }
@@ -395,26 +454,27 @@
     const res = await runSearch(cur(), 1 - S.human, { maxDepth: 4, timeMs: 900 });
     if (token !== aiToken) return;
     G.busy = false; G.hintText = '';
-    if (res && res.bestScore <= 60) { finish(null, 'Máy đồng ý hòa. Hai bên thỏa thuận hòa.'); }
+    if (res && res.bestScore <= 60) finish(null, 'Máy đồng ý hòa. Hai bên thỏa thuận hòa.');
     else toast('Máy không đồng ý hòa – máy thấy mình đang có lợi. Hãy cố gắng nhé!');
     render(); saveGame();
   }
 
-  function resign() {
+  async function resign() {
     if (G.over) return;
     const loser = S.mode === 'ai' ? S.human : turn();
-    if (!confirm(`${SIDE_NAME[loser]} xin thua?`)) return;
+    if (!(await askConfirm('Xin thua?', `${SIDE_NAME[loser]} xin thua ván này?`, 'Xin thua', 'Chơi tiếp'))) return;
     cancelAI();
     finish(1 - loser, `${SIDE_NAME[loser]} xin thua. ${SIDE_NAME[1 - loser]} thắng.`);
+    setSheet(false);
     render(); saveGame();
   }
 
   function flip() { S.flipped = !S.flipped; render(); saveSettings(); }
 
   // ---------- Vẽ ----------
-  function pieceGroup(sq, p, x, y) {
+  function pieceGroup(p, x, y, parent) {
     const sd = p >> 3, ty = p & 7;
-    const g = el('g', { class: 'piece' }, gPieces);
+    const g = el('g', { class: 'piece' }, parent || gPieces);
     g.style.transform = `translate(${x}px,${y}px)`;
     el('circle', { cx: 1.5, cy: 3, r: 25, fill: 'rgba(40,20,0,.28)' }, g);
     el('circle', { cx: 0, cy: 0, r: 25, fill: 'url(#pg)', stroke: '#6b4518', 'stroke-width': 2 }, g);
@@ -432,41 +492,49 @@
     return el('circle', Object.assign({ cx: sqX(sq), cy: sqY(sq), r, fill: 'none', stroke: color, 'stroke-width': w }, extra || {}), parent);
   }
 
-  function render() {
-    const b = cur();
-    const t = turn();
-    const st = stateOf(b);
-    G.legal = G.over ? [] : Eng.genLegal(st, t);
-    const chk = !G.over && Eng.inCheck(st, t);
+  const pieceEls = new Array(90).fill(null);
 
-    // quân cờ
+  function renderPieces() {
+    const b = cur();
     gPieces.textContent = '';
-    const animTo = G.anim ? G.anim.to : -1;
-    let animGroup = null, animFrom = null;
+    pieceEls.fill(null);
+    const anim = G.anim;
+    let animGroup = null;
     for (let sq = 0; sq < 90; sq++) {
       const p = b[sq];
       if (!p) continue;
-      if (sq === animTo) {
-        animFrom = G.anim.from;
-        animGroup = pieceGroup(sq, p, sqX(animFrom), sqY(animFrom));
-      } else pieceGroup(sq, p, sqX(sq), sqY(sq));
+      if (anim && sq === anim.to) {
+        animGroup = pieceGroup(p, sqX(anim.from), sqY(anim.from));
+        pieceEls[sq] = animGroup;
+      } else pieceEls[sq] = pieceGroup(p, sqX(sq), sqY(sq));
     }
+    gHl.textContent = '';
     if (animGroup) {
       void animGroup.getBoundingClientRect();
-      requestAnimationFrame(() => { animGroup.style.transform = `translate(${sqX(animTo)}px,${sqY(animTo)}px)`; });
+      requestAnimationFrame(() => { animGroup.style.transform = `translate(${sqX(anim.to)}px,${sqY(anim.to)}px)`; });
+      if (anim.cap) {
+        const gh = pieceGroup(anim.cap, sqX(anim.to), sqY(anim.to), gHl);
+        gh.setAttribute('class', 'piece ghost');
+        gh.style.transition = 'none';
+      }
     }
     G.anim = null;
+  }
 
-    // nền nhấn mạnh
+  function renderHighlights() {
+    const b = cur(), t = turn();
+    const keep = Array.from(gHl.querySelectorAll('.ghost'));
     gHl.textContent = '';
+    keep.forEach((n) => gHl.appendChild(n));
     gMarks.textContent = '';
+    const chk = !G.over && Eng.inCheck(stateOf(b), t);
     if (G.moves.length) {
       const lm = G.moves[G.moves.length - 1];
       ring(gHl, lm & 127, 26, '#2f6fde', 2.5, { 'stroke-dasharray': '5 4', opacity: .85 });
       ring(gHl, lm >> 7, 29, '#2f6fde', 3.5, { opacity: .9 });
     }
     if (chk) {
-      const g = st.kp[t];
+      const g = stateOf(b).kp[t];
       el('circle', { cx: sqX(g), cy: sqY(g), r: 40, fill: 'url(#glow)', class: 'checkglow' }, gHl);
     }
     if (G.sel !== null) {
@@ -484,14 +552,22 @@
       ring(gMarks, G.hint.from, 30, '#1f9b60', 4, { class: 'hintring' });
       ring(gMarks, G.hint.to, 30, '#1f9b60', 4, { class: 'hintring' });
     }
+    return chk;
+  }
 
-    renderBars(st, chk);
+  function render() {
+    const b = cur(), t = turn();
+    G.legal = G.over ? [] : Eng.genLegal(stateOf(b), t);
+    renderPieces();
+    const chk = renderHighlights();
+    renderBars();
     renderStatus(chk);
     renderMoves();
     syncOverlay();
     $('btnUndo').disabled = !G.moves.length;
-    $('btnHint').disabled = !!G.over || G.thinking || G.busy || !humanTurn();
-    $('btnDraw').disabled = !!G.over || G.thinking || G.busy || !humanTurn();
+    const cant = !!G.over || G.thinking || G.busy || !humanTurn();
+    $('btnHint').disabled = cant;
+    $('btnDraw').disabled = cant;
     $('btnResign').disabled = !!G.over;
   }
 
@@ -502,7 +578,7 @@
     return out;
   }
 
-  function renderBars(st, chk) {
+  function renderBars() {
     const bottomSide = S.flipped ? 1 : 0, topSide = 1 - bottomSide;
     const fill = (id, side) => {
       const bar = $(id);
@@ -511,12 +587,15 @@
       const active = !G.over && turn() === side;
       bar.className = 'pbar ' + (id === 'barTop' ? 'top' : 'bottom') + (active ? ' active' : '');
       const think = isAI && G.thinking ? ' <span class="spinner" title="Đang nghĩ"></span>' : '';
-      const caps = capturedBy(side).map((c) => `<span class="${(c >> 3) === 0 ? 'w' : 'b'}${S.pieceStyle === 'vi' ? ' vi' : ''}" title="${PIECE_NAME[c & 7]}">${glyph(c >> 3, c & 7)}</span>`).join('');
+      const vi = S.pieceStyle === 'vi' ? ' vi' : '';
+      const caps = capturedBy(side).map((c) => `<span class="${(c >> 3) === 0 ? 'w' : 'b'}${vi}" title="${PIECE_NAME[c & 7]}">${glyph(c >> 3, c & 7)}</span>`).join('');
       const lvl = isAI ? ` · ${LEVELS[S.level].name}` : '';
-      bar.innerHTML = `<span class="dot ${side === 0 ? 'w' : 'b'}"></span><span class="nm">${who}</span><span class="tag">${SIDE_NAME[side]}${lvl}</span>${think}<span class="caps" aria-label="Quân đã ăn">${caps}</span>`;
+      const clock = G.clock.on ? `<span class="clock" data-side="${side}"></span>` : '';
+      bar.innerHTML = `<span class="dot ${side === 0 ? 'w' : 'b'}"></span><span class="who"><span class="nm">${who}${think}</span><span class="tag">${SIDE_NAME[side]}${lvl}</span></span><span class="caps" aria-label="Quân đã ăn">${caps}</span>${clock}`;
     };
     fill('barTop', topSide);
     fill('barBottom', bottomSide);
+    if (G.clock.on) updateClocks();
   }
 
   function renderStatus(chk) {
@@ -560,10 +639,12 @@
     $('ovText').textContent = G.over.text;
   }
 
-  // ---------- Tương tác ----------
-  svg.addEventListener('click', (ev) => {
-    if (G.over || G.thinking || G.busy || !humanTurn()) return;
-    const sq = hitSquare(ev);
+  // ---------- Tương tác: bấm và kéo thả ----------
+  const canInteract = () => !G.over && !G.thinking && !G.busy && humanTurn() && !anyDialogOpen();
+  let drag = null;
+  const LIFT = -34; // khi kéo bằng ngón tay, nhấc quân lên để ngón không che
+
+  function handleTap(sq) {
     if (sq < 0) return;
     const b = cur();
     if (G.sel !== null) {
@@ -575,29 +656,99 @@
       if (!G.legal.some((m) => (m & 127) === sq)) toast('Quân này không có nước đi hợp lệ.');
       G.sel = sq; G.hint = null; G.hintText = '';
     } else G.sel = null;
-    render();
+    renderHighlights(); renderStatus(false);
+  }
+
+  svg.addEventListener('pointerdown', (ev) => {
+    if (!canInteract() || (ev.pointerType === 'mouse' && ev.button !== 0)) return;
+    const pt = svgPoint(ev);
+    const sq = sqAt(pt.x, pt.y);
+    if (sq < 0) return;
+    const p = cur()[sq];
+    const own = p && (p >> 3) === turn();
+    drag = { sq: own ? sq : -1, id: ev.pointerId, sx: ev.clientX, sy: ev.clientY, moved: false, touch: ev.pointerType !== 'mouse' };
+    if (own) { try { svg.setPointerCapture(ev.pointerId); } catch (e) { /* */ } }
+    ev.preventDefault();
   });
 
-  $('btnNew').addEventListener('click', () => newGame(false));
-  $('ovNew').addEventListener('click', () => newGame(false));
+  svg.addEventListener('pointermove', (ev) => {
+    if (!drag || drag.sq < 0 || ev.pointerId !== drag.id) return;
+    if (!drag.moved) {
+      if (Math.hypot(ev.clientX - drag.sx, ev.clientY - drag.sy) < 8) return;
+      drag.moved = true;
+      G.sel = drag.sq; G.hint = null; G.hintText = '';
+      renderHighlights();
+      const e = pieceEls[drag.sq];
+      if (e) { e.classList.add('dragging'); gPieces.appendChild(e); }
+    }
+    const e = pieceEls[drag.sq];
+    if (e) {
+      const pt = svgPoint(ev);
+      e.style.transform = `translate(${pt.x}px,${pt.y + (drag.touch ? LIFT : 0)}px) scale(1.18)`;
+    }
+  });
+
+  function endDrag(ev, cancel) {
+    if (!drag || ev.pointerId !== drag.id) return;
+    const d = drag; drag = null;
+    try { svg.releasePointerCapture(ev.pointerId); } catch (e) { /* */ }
+    const pt = svgPoint(ev);
+    if (cancel) { if (d.moved) render(); return; }
+    if (d.sq >= 0 && d.moved) {
+      const to = sqAt(pt.x, pt.y + (d.touch ? LIFT : 0));
+      const mv = to < 0 ? undefined : G.legal.find((m) => (m & 127) === d.sq && (m >> 7) === to);
+      if (mv !== undefined) { tryMove(mv, true); }
+      else { if (to >= 0 && to !== d.sq) toast('Nước đi này không hợp lệ.'); render(); }
+      return;
+    }
+    handleTap(sqAt(pt.x, pt.y));
+  }
+  svg.addEventListener('pointerup', (ev) => endDrag(ev, false));
+  svg.addEventListener('pointercancel', (ev) => endDrag(ev, true));
+  svg.addEventListener('contextmenu', (ev) => ev.preventDefault());
+
+  // ---------- Nút bấm ----------
+  $('btnNew').addEventListener('click', openNew);
+  $('btnNew2').addEventListener('click', openNew);
+  $('ovNew').addEventListener('click', openNew);
   $('ovView').addEventListener('click', () => { G.viewing = true; render(); });
   $('btnUndo').addEventListener('click', undo);
   $('btnHint').addEventListener('click', hint);
   $('btnDraw').addEventListener('click', offerDraw);
   $('btnResign').addEventListener('click', resign);
-  $('btnFlip').addEventListener('click', flip);
-  $('btnRules').addEventListener('click', () => { const d = $('rulesDlg'); if (d.showModal) d.showModal(); else d.setAttribute('open', ''); });
-  $('rulesClose').addEventListener('click', () => $('rulesDlg').close());
-  $('rulesDlg').addEventListener('click', (e) => { if (e.target === $('rulesDlg')) $('rulesDlg').close(); });
-  $('chkHints').addEventListener('change', () => { S.hints = $('chkHints').checked; saveSettings(); render(); });
-  $('selStyle').addEventListener('change', () => { S.pieceStyle = $('selStyle').value === 'vi' ? 'vi' : 'han'; saveSettings(); render(); });
+  $('btnFlip').addEventListener('click', () => { flip(); setSheet(false); });
+  $('btnMenu').addEventListener('click', () => setSheet(true));
+  $('sheetClose').addEventListener('click', () => setSheet(false));
+  $('sheetBackdrop').addEventListener('click', () => setSheet(false));
+  const openRules = () => { setSheet(false); openDlg($('rulesDlg')); };
+  $('btnRules').addEventListener('click', openRules);
+  $('btnRules2').addEventListener('click', openRules);
+  $('rulesClose').addEventListener('click', () => closeDlg($('rulesDlg')));
+  document.querySelectorAll('dialog').forEach((d) => d.addEventListener('click', (e) => { if (e.target === d && d.id !== 'confirmDlg') closeDlg(d); }));
+  document.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => closeDlg(b.closest('dialog'))));
+  $('chkHints').addEventListener('change', () => { S.hints = $('chkHints').checked; saveSettings(); renderHighlights(); });
   $('chkSound').addEventListener('change', () => { S.sound = $('chkSound').checked; saveSettings(); });
-  $('selMode').addEventListener('change', () => { $('selSide').disabled = $('selLevel').disabled = $('selMode').value === 'pvp'; });
+  $('chkVibe').addEventListener('change', () => { S.vibe = $('chkVibe').checked; saveSettings(); buzz(30); });
+  $('selStyle').addEventListener('change', () => { S.pieceStyle = $('selStyle').value === 'vi' ? 'vi' : 'han'; saveSettings(); render(); });
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape') setSheet(false); });
+
+  // hộp thoại ván mới
+  let ng = { mode: 'ai', human: '0', level: '1', clock: '0' };
+  function syncNewDlg() {
+    document.querySelectorAll('#newDlg .seg').forEach((seg) => {
+      const key = seg.dataset.key;
+      seg.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === ng[key]));
+    });
+    document.querySelectorAll('#newDlg [data-for="ai"]').forEach((f) => f.classList.toggle('hidden', ng.mode !== 'ai'));
+  }
+  document.querySelectorAll('#newDlg .seg button').forEach((b) => b.addEventListener('click', () => {
+    ng[b.closest('.seg').dataset.key] = b.dataset.v; syncNewDlg();
+  }));
+  $('startBtn').addEventListener('click', startFromDialog);
 
   function syncControls() {
-    $('selMode').value = S.mode; $('selSide').value = String(S.human); $('selLevel').value = String(S.level);
-    $('chkHints').checked = S.hints; $('chkSound').checked = S.sound; $('selStyle').value = S.pieceStyle;
-    $('selSide').disabled = $('selLevel').disabled = S.mode === 'pvp';
+    $('chkHints').checked = S.hints; $('chkSound').checked = S.sound; $('chkVibe').checked = S.vibe;
+    $('selStyle').value = S.pieceStyle;
   }
 
   // ---------- Lưu / tải ----------
@@ -605,23 +756,27 @@
   function saveGame() {
     try {
       localStorage.setItem('cotuong.settings', JSON.stringify(S));
-      localStorage.setItem('cotuong.game', JSON.stringify({ moves: G.moves, over: G.over }));
+      localStorage.setItem('cotuong.game', JSON.stringify({ moves: G.moves, over: G.over, clock: G.clock.on ? G.clock.t : null }));
     } catch (e) { /* */ }
   }
   function loadSaved() {
     try {
       const s = JSON.parse(localStorage.getItem('cotuong.settings') || 'null');
-      if (s) Object.assign(S, { mode: s.mode === 'pvp' ? 'pvp' : 'ai', human: s.human === 1 ? 1 : 0, level: Math.min(3, Math.max(0, s.level | 0)), hints: s.hints !== false, sound: s.sound !== false, flipped: !!s.flipped, pieceStyle: s.pieceStyle === 'vi' ? 'vi' : 'han' });
+      if (s) Object.assign(S, {
+        mode: s.mode === 'pvp' ? 'pvp' : 'ai', human: s.human === 1 ? 1 : 0, level: Math.min(3, Math.max(0, s.level | 0)),
+        clock: [0, 5, 10, 15, 30].includes(s.clock) ? s.clock : 0,
+        hints: s.hints !== false, sound: s.sound !== false, vibe: s.vibe !== false, flipped: !!s.flipped,
+        pieceStyle: s.pieceStyle === 'vi' ? 'vi' : 'han',
+      });
       const g = JSON.parse(localStorage.getItem('cotuong.game') || 'null');
       if (g && Array.isArray(g.moves) && g.moves.length) {
-        const game = freshGame();
-        G = game;
+        G = freshGame();
         for (const mv of g.moves) {
-          const legal = Eng.genLegal(stateOf(cur()), turn());
-          if (!legal.includes(mv)) throw new Error('ván lưu không hợp lệ');
+          if (!Eng.genLegal(stateOf(cur()), turn()).includes(mv)) throw new Error('ván lưu không hợp lệ');
           applyRaw(mv);
         }
         if (g.over) G.over = g.over;
+        if (G.clock.on && Array.isArray(g.clock)) G.clock.t = g.clock.slice(0, 2);
         return true;
       }
     } catch (e) { G = null; }
@@ -634,12 +789,11 @@
   }
 
   // ---------- Khởi động ----------
-  if (!loadSaved()) {
-    G = freshGame();
-    if (S.mode === 'ai' && S.human === 1) S.flipped = true;
-  }
+  const resumed = loadSaved();
+  if (!resumed) { G = freshGame(); if (S.mode === 'ai' && S.human === 1) S.flipped = true; }
   syncControls();
   render();
   if (!G.over) maybeAI();
-  window.__cotuong = { Eng, get G() { return G; }, S, tryMove, render, newGame, geom: { CELL, M, BW, BH } }; // phục vụ kiểm thử
+  if (!resumed) setTimeout(() => { ng = { mode: S.mode, human: String(S.human), level: String(S.level), clock: String(S.clock) }; syncNewDlg(); openDlg($('newDlg')); }, 350);
+  window.__cotuong = { Eng, get G() { return G; }, S, tryMove, render, newGame, geom: { CELL, M, BW, BH }, sqXY: (sq) => [sqX(sq), sqY(sq)] }; // phục vụ kiểm thử
 })();

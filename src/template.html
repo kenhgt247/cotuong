@@ -2,8 +2,8 @@
 <html lang="vi">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#b3261e">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#7d1a14">
 <meta name="description" content="Game Cờ Tướng luyện cờ với máy, luật Liên đoàn Cờ Việt Nam, chơi offline.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png" type="image/png">
@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Cờ Tướng">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Cờ Tướng – Luyện cờ cùng máy</title>
 <style>
 /*__CSS__*/
@@ -19,95 +19,137 @@
 </head>
 <body>
 <div id="app">
-  <header>
-    <div>
-      <h1>Cờ <span>Tướng</span></h1>
-      <div class="sub">Luyện cờ theo luật Liên đoàn Cờ Việt Nam · chơi offline, không cần mạng</div>
+  <header class="appbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">帥</span>
+      <div>
+        <h1>Cờ <span>Tướng</span></h1>
+        <div class="sub">Luyện cờ theo luật Liên đoàn Cờ Việt Nam · chơi offline</div>
+      </div>
     </div>
-    <button id="btnRules" type="button">📖 Luật chơi</button>
+    <div class="appbtns">
+      <button id="btnRules" class="icon" type="button" aria-label="Luật chơi">📖<span>Luật</span></button>
+    </div>
   </header>
 
   <main>
     <section id="boardWrap" aria-label="Bàn cờ">
+      <div class="stage">
       <div class="pbar top" id="barTop"></div>
-      <svg id="board" role="img" aria-label="Bàn cờ tướng"></svg>
-      <div class="pbar bottom" id="barBottom"></div>
-      <div id="toast" role="status" aria-live="polite"></div>
-      <div id="overlay" hidden>
-        <div class="box">
-          <h2 id="ovTitle"></h2>
-          <p id="ovText"></p>
-          <div class="row">
-            <button class="primary" id="ovNew" type="button">Ván mới</button>
-            <button id="ovView" type="button">Xem lại bàn cờ</button>
+      <div class="boardbox">
+        <svg id="board" role="img" aria-label="Bàn cờ tướng"></svg>
+        <div id="overlay" hidden>
+          <div class="box">
+            <h2 id="ovTitle"></h2>
+            <p id="ovText"></p>
+            <div class="row">
+              <button class="primary" id="ovNew" type="button">Ván mới</button>
+              <button id="ovView" type="button">Xem lại bàn cờ</button>
+            </div>
           </div>
         </div>
+        <div id="toast" role="status" aria-live="polite"></div>
       </div>
-    </section>
-
-    <aside>
-      <div class="card">
-        <div id="status" aria-live="polite"></div>
+      <div class="pbar bottom" id="barBottom"></div>
+      <div id="statusLine" aria-live="polite">
+        <div id="status"></div>
         <div id="hintText"></div>
       </div>
-
-      <div class="card">
-        <div class="btns">
-          <button id="btnNew" class="primary" type="button">Ván mới</button>
-          <button id="btnUndo" type="button">↶ Đi lại</button>
-          <button id="btnHint" class="ok" type="button">💡 Gợi ý</button>
-          <button id="btnDraw" type="button">🤝 Xin hòa</button>
-          <button id="btnResign" type="button">🏳 Xin thua</button>
-          <button id="btnFlip" type="button">⇅ Lật bàn</button>
-        </div>
       </div>
+      <nav id="actionbar" aria-label="Chức năng">
+        <button id="btnNew" type="button"><i>＋</i><span>Ván mới</span></button>
+        <button id="btnUndo" type="button"><i>↶</i><span>Đi lại</span></button>
+        <button id="btnHint" type="button" class="hot"><i>💡</i><span>Gợi ý</span></button>
+        <button id="btnDraw" type="button"><i>🤝</i><span>Xin hòa</span></button>
+        <button id="btnMenu" type="button" class="only-mobile"><i>☰</i><span>Menu</span></button>
+      </nav>
+    </section>
 
-      <div class="card">
-        <h3>Cài đặt</h3>
-        <div class="settings">
-          <label>Chế độ
-            <select id="selMode">
-              <option value="ai">Chơi với máy</option>
-              <option value="pvp">2 người (cùng máy)</option>
-            </select>
-          </label>
-          <label>Bạn cầm quân
-            <select id="selSide">
-              <option value="0">Trắng (đỏ) – đi trước</option>
-              <option value="1">Đen – đi sau</option>
-            </select>
-          </label>
-          <label class="full">Độ khó của máy
-            <select id="selLevel">
-              <option value="0">Dễ – mới tập chơi</option>
-              <option value="1">Vừa – chơi cho vui</option>
-              <option value="2">Khó – phải suy nghĩ kỹ</option>
-              <option value="3">Cao thủ – máy nghĩ lâu hơn</option>
-            </select>
-          </label>
-          <label class="full">Hiển thị tên quân
-            <select id="selStyle">
-              <option value="han">Chữ Hán (truyền thống)</option>
-              <option value="vi">Tiếng Việt (Xe, Mã, Pháo…)</option>
-            </select>
-          </label>
-          <label class="chk"><input type="checkbox" id="chkHints"> Hiện các ô có thể đi</label>
-          <label class="chk"><input type="checkbox" id="chkSound"> Âm thanh</label>
+    <aside id="sheet" aria-label="Menu">
+      <div class="sheet-hd"><h2>Menu</h2><button id="sheetClose" class="icon" type="button" aria-label="Đóng">✕</button></div>
+      <div class="sheet-body">
+        <div class="card">
+          <div class="grid2">
+            <button id="btnResign" type="button">🏳 Xin thua</button>
+            <button id="btnFlip" type="button">⇅ Lật bàn cờ</button>
+            <button id="btnRules2" type="button">📖 Luật chơi</button>
+            <button id="btnNew2" type="button" class="primary">＋ Ván mới</button>
+          </div>
         </div>
-        <p style="margin:10px 0 0;color:var(--muted);font-size:.85rem">Bấm <b>Ván mới</b> để áp dụng chế độ, bên cầm quân và độ khó.</p>
-      </div>
-
-      <div class="card">
-        <h3>Ghi nước đi</h3>
-        <div id="moves"></div>
+        <div class="card">
+          <h3>Cài đặt</h3>
+          <div class="settings">
+            <label class="full">Hiển thị tên quân
+              <select id="selStyle">
+                <option value="han">Chữ Hán (truyền thống)</option>
+                <option value="vi">Tiếng Việt (Xe, Mã, Pháo…)</option>
+              </select>
+            </label>
+            <label class="chk"><input type="checkbox" id="chkHints"> Hiện các ô có thể đi</label>
+            <label class="chk"><input type="checkbox" id="chkSound"> Âm thanh</label>
+            <label class="chk"><input type="checkbox" id="chkVibe"> Rung khi đi quân</label>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Ghi nước đi</h3>
+          <div id="moves"></div>
+        </div>
+        <div class="foot">Luật cờ theo “Luật Cờ Tướng” – Liên đoàn Cờ Việt Nam (QĐ 1409/2004/QĐ-UBTDTT/TT1). Ván cờ tự được lưu trên máy.</div>
       </div>
     </aside>
+    <div id="sheetBackdrop"></div>
   </main>
-  <div class="foot">Luật cờ theo “Luật Cờ Tướng” – Liên đoàn Cờ Việt Nam (QĐ 1409/2004/QĐ-UBTDTT/TT1). Ván cờ tự được lưu trên máy.</div>
 </div>
 
+<dialog id="newDlg">
+  <div class="hd"><h2>Ván mới</h2><button class="icon" type="button" data-close aria-label="Đóng">✕</button></div>
+  <div class="bd">
+    <div class="field"><div class="lbl">Chế độ</div>
+      <div class="seg" data-key="mode">
+        <button type="button" data-v="ai">🤖 Chơi với máy</button>
+        <button type="button" data-v="pvp">👥 2 người</button>
+      </div>
+    </div>
+    <div class="field" data-for="ai"><div class="lbl">Bạn cầm quân</div>
+      <div class="seg" data-key="human">
+        <button type="button" data-v="0">Trắng (đỏ)<small>đi trước</small></button>
+        <button type="button" data-v="1">Đen<small>đi sau</small></button>
+      </div>
+    </div>
+    <div class="field" data-for="ai"><div class="lbl">Độ khó của máy</div>
+      <div class="seg four" data-key="level">
+        <button type="button" data-v="0">Dễ<small>mới tập</small></button>
+        <button type="button" data-v="1">Vừa<small>cho vui</small></button>
+        <button type="button" data-v="2">Khó<small>suy nghĩ</small></button>
+        <button type="button" data-v="3">Cao thủ<small>nghĩ lâu</small></button>
+      </div>
+    </div>
+    <div class="field"><div class="lbl">Đồng hồ mỗi bên</div>
+      <div class="seg five" data-key="clock">
+        <button type="button" data-v="0">Không</button>
+        <button type="button" data-v="5">5′</button>
+        <button type="button" data-v="10">10′</button>
+        <button type="button" data-v="15">15′</button>
+        <button type="button" data-v="30">30′</button>
+      </div>
+    </div>
+    <button id="startBtn" class="primary big" type="button" autofocus>Bắt đầu chơi</button>
+  </div>
+</dialog>
+
+<dialog id="confirmDlg">
+  <div class="hd"><h2 id="cfTitle">Xác nhận</h2></div>
+  <div class="bd">
+    <p id="cfText"></p>
+    <div class="row2">
+      <button id="cfNo" type="button">Không</button>
+      <button id="cfYes" class="primary" type="button">Đồng ý</button>
+    </div>
+  </div>
+</dialog>
+
 <dialog id="rulesDlg">
-  <div class="hd"><h2>📖 Luật chơi Cờ Tướng</h2><button id="rulesClose" type="button">Đóng</button></div>
+  <div class="hd"><h2>📖 Luật chơi Cờ Tướng</h2><button id="rulesClose" class="icon" type="button" aria-label="Đóng">✕</button></div>
   <div class="bd">
     <h3>Mục đích</h3>
     <p>Hai người chơi, một bên cầm quân <b>Trắng</b> (quân đỏ), một bên cầm quân <b>Đen</b>. Bên Trắng đi trước. Mỗi bên tìm cách chiếu bí Tướng của đối phương.</p>
