@@ -1,0 +1,17 @@
+{
+  "name": "Cờ Tướng – Luyện cờ cùng máy",
+  "short_name": "Cờ Tướng",
+  "description": "Luyện cờ tướng với máy theo luật Liên đoàn Cờ Việt Nam, chơi được cả khi không có mạng.",
+  "lang": "vi",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f1e4c8",
+  "theme_color": "#b3261e",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

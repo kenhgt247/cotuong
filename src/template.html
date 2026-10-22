@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#b3261e">
+<meta name="description" content="Game Cờ Tướng luyện cờ với máy, luật Liên đoàn Cờ Việt Nam, chơi offline.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Cờ Tướng">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Cờ Tướng – Luyện cờ cùng máy</title>
+<style>
+/*__CSS__*/
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div>
+      <h1>Cờ <span>Tướng</span></h1>
+      <div class="sub">Luyện cờ theo luật Liên đoàn Cờ Việt Nam · chơi offline, không cần mạng</div>
+    </div>
+    <button id="btnRules" type="button">📖 Luật chơi</button>
+  </header>
+
+  <main>
+    <section id="boardWrap" aria-label="Bàn cờ">
+      <div class="pbar top" id="barTop"></div>
+      <svg id="board" role="img" aria-label="Bàn cờ tướng"></svg>
+      <div class="pbar bottom" id="barBottom"></div>
+      <div id="toast" role="status" aria-live="polite"></div>
+      <div id="overlay" hidden>
+        <div class="box">
+          <h2 id="ovTitle"></h2>
+          <p id="ovText"></p>
+          <div class="row">
+            <button class="primary" id="ovNew" type="button">Ván mới</button>
+            <button id="ovView" type="button">Xem lại bàn cờ</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <aside>
+      <div class="card">
+        <div id="status" aria-live="polite"></div>
+        <div id="hintText"></div>
+      </div>
+
+      <div class="card">
+        <div class="btns">
+          <button id="btnNew" class="primary" type="button">Ván mới</button>
+          <button id="btnUndo" type="button">↶ Đi lại</button>
+          <button id="btnHint" class="ok" type="button">💡 Gợi ý</button>
+          <button id="btnDraw" type="button">🤝 Xin hòa</button>
+          <button id="btnResign" type="button">🏳 Xin thua</button>
+          <button id="btnFlip" type="button">⇅ Lật bàn</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Cài đặt</h3>
+        <div class="settings">
+          <label>Chế độ
+            <select id="selMode">
+              <option value="ai">Chơi với máy</option>
+              <option value="pvp">2 người (cùng máy)</option>
+            </select>
+          </label>
+          <label>Bạn cầm quân
+            <select id="selSide">
+              <option value="0">Trắng (đỏ) – đi trước</option>
+              <option value="1">Đen – đi sau</option>
+            </select>
+          </label>
+          <label class="full">Độ khó của máy
+            <select id="selLevel">
+              <option value="0">Dễ – mới tập chơi</option>
+              <option value="1">Vừa – chơi cho vui</option>
+              <option value="2">Khó – phải suy nghĩ kỹ</option>
+              <option value="3">Cao thủ – máy nghĩ lâu hơn</option>
+            </select>
+          </label>
+          <label class="full">Hiển thị tên quân
+            <select id="selStyle">
+              <option value="han">Chữ Hán (truyền thống)</option>
+              <option value="vi">Tiếng Việt (Xe, Mã, Pháo…)</option>
+            </select>
+          </label>
+          <label class="chk"><input type="checkbox" id="chkHints"> Hiện các ô có thể đi</label>
+          <label class="chk"><input type="checkbox" id="chkSound"> Âm thanh</label>
+        </div>
+        <p style="margin:10px 0 0;color:var(--muted);font-size:.85rem">Bấm <b>Ván mới</b> để áp dụng chế độ, bên cầm quân và độ khó.</p>
+      </div>
+
+      <div class="card">
+        <h3>Ghi nước đi</h3>
+        <div id="moves"></div>
+      </div>
+    </aside>
+  </main>
+  <div class="foot">Luật cờ theo “Luật Cờ Tướng” – Liên đoàn Cờ Việt Nam (QĐ 1409/2004/QĐ-UBTDTT/TT1). Ván cờ tự được lưu trên máy.</div>
+</div>
+
+<dialog id="rulesDlg">
+  <div class="hd"><h2>📖 Luật chơi Cờ Tướng</h2><button id="rulesClose" type="button">Đóng</button></div>
+  <div class="bd">
+    <h3>Mục đích</h3>
+    <p>Hai người chơi, một bên cầm quân <b>Trắng</b> (quân đỏ), một bên cầm quân <b>Đen</b>. Bên Trắng đi trước. Mỗi bên tìm cách chiếu bí Tướng của đối phương.</p>
+
+    <h3>Cách đi từng quân</h3>
+    <ul>
+      <li><b>Tướng (Soái):</b> đi 1 bước ngang hoặc dọc, <u>chỉ trong cung</u>. Hai Tướng không được đối mặt nhau trên cùng một cột nếu giữa không có quân nào che.</li>
+      <li><b>Sĩ:</b> đi 1 bước chéo, chỉ trong cung.</li>
+      <li><b>Tượng:</b> đi chéo 2 bước (hình chữ điền), <u>không được qua sông</u>. Bị cản nếu có quân ở điểm giữa đường chéo (<i>cản mắt tượng</i>).</li>
+      <li><b>Mã:</b> đi 1 bước thẳng rồi 1 bước chéo (hình chữ nhật). Bị cản nếu có quân ở ngay bước thẳng đầu tiên (<i>cản chân mã</i>).</li>
+      <li><b>Xe:</b> đi ngang hoặc dọc bao nhiêu ô tùy ý, không được nhảy qua quân khác.</li>
+      <li><b>Pháo:</b> đi như Xe. Khi <u>ăn quân</u> thì phải nhảy qua đúng 1 quân (gọi là <i>ngòi</i>) rồi ăn quân đứng ngay sau đó.</li>
+      <li><b>Tốt (Binh):</b> chưa qua sông chỉ đi thẳng tiến 1 bước. Qua sông rồi được đi thêm ngang 1 bước. <u>Không bao giờ đi lùi.</u></li>
+    </ul>
+
+    <h3>Chiếu tướng và thắng thua</h3>
+    <ul>
+      <li><b>Chiếu tướng:</b> nước đi đe dọa ăn Tướng đối phương ở nước sau. Bên bị chiếu <u>phải</u> hóa giải: dời Tướng, ăn quân đang chiếu, hoặc chặn đường chiếu.</li>
+      <li><b>Chiếu bí:</b> bị chiếu mà không hóa giải được → thua.</li>
+      <li><b>Hết nước đi:</b> Tướng bị vây chặt và không quân nào còn đi được → <u>thua</u> (khác cờ vua, cờ tướng không có thế “hết nước đi là hòa”).</li>
+      <li>Không được đi nước làm Tướng của mình bị chiếu hoặc bị lộ mặt Tướng.</li>
+    </ul>
+
+    <h3>Khi nào hòa?</h3>
+    <ul>
+      <li>Hai bên thỏa thuận hòa (bấm <b>Xin hòa</b>, máy sẽ xem xét).</li>
+      <li>Hai bên đều không còn quân nào có thể sang tấn công (không còn Xe, Pháo, Mã, Tốt).</li>
+      <li>50 nước liên tiếp (mỗi bên 50 lượt) không ai ăn quân.</li>
+      <li>Thế cờ lặp lại 3 lần mà không bên nào phạm luật chiếu mãi hay bắt mãi.</li>
+    </ul>
+
+    <h3>Chiếu mãi và bắt mãi</h3>
+    <div class="tip">Nếu thế cờ lặp lại 3 lần, game sẽ xét xem bên nào đang <b>chiếu liên tục</b> hoặc <b>đuổi bắt liên tục một quân</b>. Bên đó phải <b>đổi nước đi</b>, nếu không sẽ bị xử thua.</div>
+    <ul>
+      <li><b>Chiếu mãi:</b> nước nào cũng chiếu Tướng đối phương → phạm luật.</li>
+      <li><b>Bắt mãi:</b> nước nào cũng đe dọa ăn cùng một quân của đối phương mà quân đó không có “căn” (không có quân bảo vệ thật sự ăn lại được) → phạm luật. Quân có <i>căn thật</i> thì được phép đuổi, trừ Mã hoặc Pháo đuổi Xe.</li>
+      <li>Đuổi lần lượt <i>hai quân khác nhau</i>, “một chiếu một dừng”, “dọa hết mãi”, hoặc đòi đổi quân (Xe–Xe, Pháo–Pháo, Mã–Mã) đều <b>không</b> phạm luật.</li>
+      <li>Tướng và Tốt đuổi bắt mãi, hoặc đuổi bắt Tốt chưa qua sông, chỉ bị xử hòa.</li>
+      <li>Nếu cả hai bên cùng phạm luật thì xử <b>hòa</b>.</li>
+    </ul>
+
+    <h3>Cách ghi nước đi</h3>
+    <p>Ghi theo kiểu Việt Nam: <b>tên quân – số cột (đếm từ bên phải của người đó) – tiến / thoái / bình – đích</b>.</p>
+    <ul>
+      <li><b>Tiến</b>: đi về phía đối phương. <b>Thoái</b>: lùi về phía mình. <b>Bình</b>: đi ngang.</li>
+      <li>Xe, Pháo, Tốt, Tướng đi dọc: số cuối là <u>số bước</u>. Đi ngang, hoặc Mã, Tượng, Sĩ: số cuối là <u>số cột đến</u>.</li>
+      <li>Ví dụ: <b>Pháo 2 bình 5</b> = Pháo ở cột 2 đi ngang sang cột 5 (pháo đầu). <b>Mã 8 tiến 7</b> = Mã ở cột 8 nhảy lên cột 7.</li>
+      <li>Hai quân cùng loại cùng cột: dùng <b>trước</b> / <b>sau</b> (ví dụ <i>Xe trước tiến 3</i>).</li>
+    </ul>
+  </div>
+</dialog>
+
+<script>
+/*__ENGINE__*/
+</script>
+<script>
+/*__APP__*/
+</script>
+</body>
+</html>

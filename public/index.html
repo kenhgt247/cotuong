@@ -1,0 +1,1475 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#b3261e">
+<meta name="description" content="Game Cờ Tướng luyện cờ với máy, luật Liên đoàn Cờ Việt Nam, chơi offline.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Cờ Tướng">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Cờ Tướng – Luyện cờ cùng máy</title>
+<style>
+:root {
+  --bg: #f1e4c8;
+  --bg2: #e6d3ab;
+  --panel: #fffaf0;
+  --ink: #2a1c10;
+  --muted: #7a6650;
+  --line: #d8c49a;
+  --accent: #b3261e;
+  --accent2: #1f6f4a;
+  --gold: #e0a100;
+  --shadow: 0 6px 18px rgba(60, 35, 10, .18);
+  --radius: 14px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui, sans-serif;
+  color: var(--ink);
+  background: radial-gradient(1200px 600px at 20% -10%, #fbf3df 0, var(--bg) 55%, var(--bg2) 100%) fixed;
+  min-height: 100vh;
+  -webkit-tap-highlight-color: transparent;
+}
+#app { max-width: 1120px; margin: 0 auto; padding: 14px 16px 28px; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+header h1 { margin: 0; font-size: 1.5rem; letter-spacing: .5px; }
+header h1 span { color: var(--accent); }
+header .sub { color: var(--muted); font-size: .9rem; }
+button {
+  font: inherit; cursor: pointer; border: 1px solid var(--line); background: #fff; color: var(--ink);
+  padding: 9px 14px; border-radius: 10px; transition: transform .08s, box-shadow .15s, background .15s;
+}
+button:hover:not(:disabled) { background: #fff3d6; box-shadow: 0 2px 8px rgba(60,35,10,.15); }
+button:active:not(:disabled) { transform: translateY(1px); }
+button:disabled { opacity: .45; cursor: default; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+button.primary:hover:not(:disabled) { background: #98201a; }
+button.ok { background: var(--accent2); border-color: var(--accent2); color: #fff; font-weight: 600; }
+button.ok:hover:not(:disabled) { background: #185a3c; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid #2b6cb0; outline-offset: 2px; }
+
+main { display: grid; grid-template-columns: minmax(0, 580px) minmax(300px, 1fr); gap: 18px; align-items: start; }
+#boardWrap { position: relative; }
+.pbar {
+  display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-radius: 12px;
+  background: var(--panel); border: 2px solid transparent; box-shadow: var(--shadow); min-height: 46px;
+}
+.pbar.top { margin-bottom: 8px; }
+.pbar.bottom { margin-top: 8px; }
+.pbar.active { border-color: var(--gold); }
+.pbar .dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #444; flex: none; }
+.pbar .dot.w { background: #d93a2b; border-color: #8f1f15; }
+.pbar .dot.b { background: #1d1d1d; }
+.pbar .nm { font-weight: 600; }
+.pbar .tag { font-size: .8rem; color: var(--muted); }
+.pbar .caps { margin-left: auto; display: flex; flex-wrap: wrap; gap: 2px; justify-content: flex-end; font-size: 1.05rem; line-height: 1; }
+.pbar .caps span { display: inline-block; width: 22px; height: 22px; line-height: 21px; text-align: center; border-radius: 50%; background: #f3e1b4; border: 1px solid #a98b57; font-size: 13px; font-family: "Noto Serif CJK SC","Noto Serif SC","Source Han Serif SC","Songti SC","SimSun",serif; font-weight: 700; }
+.pbar .caps span.w { color: #c0281d; }
+.pbar .caps span.b { color: #1d1d1d; }
+#board { display: block; width: 100%; height: auto; border-radius: 14px; box-shadow: var(--shadow); touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.piece { transition: transform .26s cubic-bezier(.3,.7,.3,1); cursor: pointer; }
+.piece text { font-family: "Noto Serif CJK SC","Noto Serif SC","Source Han Serif SC","STKaiti","KaiTi","Songti SC","SimSun","Microsoft YaHei",serif; font-weight: 700; pointer-events: none; }
+.piece text.vi { font-family: "Segoe UI", Roboto, Arial, system-ui, sans-serif; font-weight: 800; letter-spacing: -.2px; }
+.pbar .caps span.vi { font-family: "Segoe UI", Roboto, Arial, sans-serif; font-size: 7.5px; letter-spacing: -.4px; }
+.hintring { animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity: .35; } 50% { opacity: 1; } }
+.checkglow { animation: pulse .8s ease-in-out infinite; }
+
+#overlay {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: 14px;
+  background: rgba(35, 20, 8, .55); backdrop-filter: blur(2px); z-index: 5; padding: 20px;
+}
+#overlay[hidden] { display: none; }
+#overlay .box { background: var(--panel); border-radius: 18px; padding: 22px 24px; max-width: 360px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,.4); }
+#overlay h2 { margin: 0 0 8px; font-size: 1.6rem; }
+#overlay p { margin: 0 0 16px; color: var(--muted); line-height: 1.45; }
+#overlay .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+
+#toast {
+  position: absolute; left: 50%; top: 62px; transform: translateX(-50%); z-index: 6; max-width: 92%;
+  background: #3a2615; color: #fff; padding: 10px 14px; border-radius: 12px; font-size: .95rem; line-height: 1.4;
+  box-shadow: 0 6px 20px rgba(0,0,0,.35); text-align: center; pointer-events: none; transition: opacity .25s; opacity: 0;
+}
+#toast.show { opacity: 1; }
+#toast.warn { background: #9c2b1b; }
+
+aside { display: flex; flex-direction: column; gap: 12px; }
+.card { background: var(--panel); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; }
+.card h3 { margin: 0 0 10px; font-size: 1rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .6px; }
+#status { font-size: 1.1rem; font-weight: 600; min-height: 1.5em; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+#status .badge { background: var(--accent); color: #fff; border-radius: 999px; padding: 2px 10px; font-size: .85rem; animation: pulse .9s ease-in-out infinite; }
+#hintText { color: var(--accent2); font-weight: 600; min-height: 1.3em; margin-top: 4px; font-size: .95rem; }
+.spinner { width: 16px; height: 16px; border: 3px solid #e0cfa8; border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.btns button { padding: 10px 6px; }
+.settings { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+.settings label { display: flex; flex-direction: column; gap: 4px; font-size: .85rem; color: var(--muted); }
+.settings select { font: inherit; padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: #fff; color: var(--ink); }
+.settings .chk { flex-direction: row; align-items: center; gap: 8px; color: var(--ink); font-size: .95rem; }
+.settings .chk input { width: 18px; height: 18px; }
+.settings .full { grid-column: 1 / -1; }
+#moves { max-height: 260px; overflow: auto; font-size: .95rem; border-radius: 10px; border: 1px solid var(--line); background: #fff; }
+#moves table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+#moves th { position: sticky; top: 0; background: #f6ebd0; font-weight: 600; font-size: .8rem; color: var(--muted); text-align: left; padding: 6px 8px; }
+#moves td { padding: 5px 8px; border-top: 1px solid #f0e6cf; }
+#moves td.n { color: var(--muted); width: 2.4em; }
+#moves td.cur { background: #fff1bf; font-weight: 700; }
+#moves .empty { padding: 14px; color: var(--muted); text-align: center; }
+.foot { text-align: center; color: var(--muted); font-size: .8rem; margin-top: 14px; }
+
+dialog { border: none; border-radius: 18px; padding: 0; max-width: 680px; width: calc(100% - 28px); box-shadow: 0 20px 60px rgba(0,0,0,.45); color: var(--ink); background: var(--panel); }
+dialog::backdrop { background: rgba(30, 15, 5, .55); }
+dialog .hd { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); border-radius: 18px 18px 0 0; }
+dialog .hd h2 { margin: 0; font-size: 1.25rem; }
+dialog .bd { padding: 6px 22px 22px; max-height: 72vh; overflow: auto; line-height: 1.55; }
+dialog h3 { margin: 18px 0 6px; color: var(--accent); font-size: 1.05rem; }
+dialog ul { margin: 6px 0; padding-left: 20px; }
+dialog li { margin: 3px 0; }
+dialog .tip { background: #fff4d3; border-left: 4px solid var(--gold); padding: 8px 12px; border-radius: 8px; margin: 10px 0; }
+
+@media (max-width: 880px) {
+  main { grid-template-columns: 1fr; }
+  #app { padding: 10px 10px 24px; }
+  header h1 { font-size: 1.25rem; }
+  header .sub { display: none; }
+  #moves { max-height: 180px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .piece { transition: none; }
+  .hintring, .checkglow, #status .badge { animation: none; }
+}
+
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div>
+      <h1>Cờ <span>Tướng</span></h1>
+      <div class="sub">Luyện cờ theo luật Liên đoàn Cờ Việt Nam · chơi offline, không cần mạng</div>
+    </div>
+    <button id="btnRules" type="button">📖 Luật chơi</button>
+  </header>
+
+  <main>
+    <section id="boardWrap" aria-label="Bàn cờ">
+      <div class="pbar top" id="barTop"></div>
+      <svg id="board" role="img" aria-label="Bàn cờ tướng"></svg>
+      <div class="pbar bottom" id="barBottom"></div>
+      <div id="toast" role="status" aria-live="polite"></div>
+      <div id="overlay" hidden>
+        <div class="box">
+          <h2 id="ovTitle"></h2>
+          <p id="ovText"></p>
+          <div class="row">
+            <button class="primary" id="ovNew" type="button">Ván mới</button>
+            <button id="ovView" type="button">Xem lại bàn cờ</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <aside>
+      <div class="card">
+        <div id="status" aria-live="polite"></div>
+        <div id="hintText"></div>
+      </div>
+
+      <div class="card">
+        <div class="btns">
+          <button id="btnNew" class="primary" type="button">Ván mới</button>
+          <button id="btnUndo" type="button">↶ Đi lại</button>
+          <button id="btnHint" class="ok" type="button">💡 Gợi ý</button>
+          <button id="btnDraw" type="button">🤝 Xin hòa</button>
+          <button id="btnResign" type="button">🏳 Xin thua</button>
+          <button id="btnFlip" type="button">⇅ Lật bàn</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Cài đặt</h3>
+        <div class="settings">
+          <label>Chế độ
+            <select id="selMode">
+              <option value="ai">Chơi với máy</option>
+              <option value="pvp">2 người (cùng máy)</option>
+            </select>
+          </label>
+          <label>Bạn cầm quân
+            <select id="selSide">
+              <option value="0">Trắng (đỏ) – đi trước</option>
+              <option value="1">Đen – đi sau</option>
+            </select>
+          </label>
+          <label class="full">Độ khó của máy
+            <select id="selLevel">
+              <option value="0">Dễ – mới tập chơi</option>
+              <option value="1">Vừa – chơi cho vui</option>
+              <option value="2">Khó – phải suy nghĩ kỹ</option>
+              <option value="3">Cao thủ – máy nghĩ lâu hơn</option>
+            </select>
+          </label>
+          <label class="full">Hiển thị tên quân
+            <select id="selStyle">
+              <option value="han">Chữ Hán (truyền thống)</option>
+              <option value="vi">Tiếng Việt (Xe, Mã, Pháo…)</option>
+            </select>
+          </label>
+          <label class="chk"><input type="checkbox" id="chkHints"> Hiện các ô có thể đi</label>
+          <label class="chk"><input type="checkbox" id="chkSound"> Âm thanh</label>
+        </div>
+        <p style="margin:10px 0 0;color:var(--muted);font-size:.85rem">Bấm <b>Ván mới</b> để áp dụng chế độ, bên cầm quân và độ khó.</p>
+      </div>
+
+      <div class="card">
+        <h3>Ghi nước đi</h3>
+        <div id="moves"></div>
+      </div>
+    </aside>
+  </main>
+  <div class="foot">Luật cờ theo “Luật Cờ Tướng” – Liên đoàn Cờ Việt Nam (QĐ 1409/2004/QĐ-UBTDTT/TT1). Ván cờ tự được lưu trên máy.</div>
+</div>
+
+<dialog id="rulesDlg">
+  <div class="hd"><h2>📖 Luật chơi Cờ Tướng</h2><button id="rulesClose" type="button">Đóng</button></div>
+  <div class="bd">
+    <h3>Mục đích</h3>
+    <p>Hai người chơi, một bên cầm quân <b>Trắng</b> (quân đỏ), một bên cầm quân <b>Đen</b>. Bên Trắng đi trước. Mỗi bên tìm cách chiếu bí Tướng của đối phương.</p>
+
+    <h3>Cách đi từng quân</h3>
+    <ul>
+      <li><b>Tướng (Soái):</b> đi 1 bước ngang hoặc dọc, <u>chỉ trong cung</u>. Hai Tướng không được đối mặt nhau trên cùng một cột nếu giữa không có quân nào che.</li>
+      <li><b>Sĩ:</b> đi 1 bước chéo, chỉ trong cung.</li>
+      <li><b>Tượng:</b> đi chéo 2 bước (hình chữ điền), <u>không được qua sông</u>. Bị cản nếu có quân ở điểm giữa đường chéo (<i>cản mắt tượng</i>).</li>
+      <li><b>Mã:</b> đi 1 bước thẳng rồi 1 bước chéo (hình chữ nhật). Bị cản nếu có quân ở ngay bước thẳng đầu tiên (<i>cản chân mã</i>).</li>
+      <li><b>Xe:</b> đi ngang hoặc dọc bao nhiêu ô tùy ý, không được nhảy qua quân khác.</li>
+      <li><b>Pháo:</b> đi như Xe. Khi <u>ăn quân</u> thì phải nhảy qua đúng 1 quân (gọi là <i>ngòi</i>) rồi ăn quân đứng ngay sau đó.</li>
+      <li><b>Tốt (Binh):</b> chưa qua sông chỉ đi thẳng tiến 1 bước. Qua sông rồi được đi thêm ngang 1 bước. <u>Không bao giờ đi lùi.</u></li>
+    </ul>
+
+    <h3>Chiếu tướng và thắng thua</h3>
+    <ul>
+      <li><b>Chiếu tướng:</b> nước đi đe dọa ăn Tướng đối phương ở nước sau. Bên bị chiếu <u>phải</u> hóa giải: dời Tướng, ăn quân đang chiếu, hoặc chặn đường chiếu.</li>
+      <li><b>Chiếu bí:</b> bị chiếu mà không hóa giải được → thua.</li>
+      <li><b>Hết nước đi:</b> Tướng bị vây chặt và không quân nào còn đi được → <u>thua</u> (khác cờ vua, cờ tướng không có thế “hết nước đi là hòa”).</li>
+      <li>Không được đi nước làm Tướng của mình bị chiếu hoặc bị lộ mặt Tướng.</li>
+    </ul>
+
+    <h3>Khi nào hòa?</h3>
+    <ul>
+      <li>Hai bên thỏa thuận hòa (bấm <b>Xin hòa</b>, máy sẽ xem xét).</li>
+      <li>Hai bên đều không còn quân nào có thể sang tấn công (không còn Xe, Pháo, Mã, Tốt).</li>
+      <li>50 nước liên tiếp (mỗi bên 50 lượt) không ai ăn quân.</li>
+      <li>Thế cờ lặp lại 3 lần mà không bên nào phạm luật chiếu mãi hay bắt mãi.</li>
+    </ul>
+
+    <h3>Chiếu mãi và bắt mãi</h3>
+    <div class="tip">Nếu thế cờ lặp lại 3 lần, game sẽ xét xem bên nào đang <b>chiếu liên tục</b> hoặc <b>đuổi bắt liên tục một quân</b>. Bên đó phải <b>đổi nước đi</b>, nếu không sẽ bị xử thua.</div>
+    <ul>
+      <li><b>Chiếu mãi:</b> nước nào cũng chiếu Tướng đối phương → phạm luật.</li>
+      <li><b>Bắt mãi:</b> nước nào cũng đe dọa ăn cùng một quân của đối phương mà quân đó không có “căn” (không có quân bảo vệ thật sự ăn lại được) → phạm luật. Quân có <i>căn thật</i> thì được phép đuổi, trừ Mã hoặc Pháo đuổi Xe.</li>
+      <li>Đuổi lần lượt <i>hai quân khác nhau</i>, “một chiếu một dừng”, “dọa hết mãi”, hoặc đòi đổi quân (Xe–Xe, Pháo–Pháo, Mã–Mã) đều <b>không</b> phạm luật.</li>
+      <li>Tướng và Tốt đuổi bắt mãi, hoặc đuổi bắt Tốt chưa qua sông, chỉ bị xử hòa.</li>
+      <li>Nếu cả hai bên cùng phạm luật thì xử <b>hòa</b>.</li>
+    </ul>
+
+    <h3>Cách ghi nước đi</h3>
+    <p>Ghi theo kiểu Việt Nam: <b>tên quân – số cột (đếm từ bên phải của người đó) – tiến / thoái / bình – đích</b>.</p>
+    <ul>
+      <li><b>Tiến</b>: đi về phía đối phương. <b>Thoái</b>: lùi về phía mình. <b>Bình</b>: đi ngang.</li>
+      <li>Xe, Pháo, Tốt, Tướng đi dọc: số cuối là <u>số bước</u>. Đi ngang, hoặc Mã, Tượng, Sĩ: số cuối là <u>số cột đến</u>.</li>
+      <li>Ví dụ: <b>Pháo 2 bình 5</b> = Pháo ở cột 2 đi ngang sang cột 5 (pháo đầu). <b>Mã 8 tiến 7</b> = Mã ở cột 8 nhảy lên cột 7.</li>
+      <li>Hai quân cùng loại cùng cột: dùng <b>trước</b> / <b>sau</b> (ví dụ <i>Xe trước tiến 3</i>).</li>
+    </ul>
+  </div>
+</dialog>
+
+<script>
+/* Bộ máy luật Cờ Tướng + AI.
+ * Dùng chung cho luồng chính (luật, gợi ý nước đi) và Web Worker (máy suy nghĩ).
+ * Luật theo "Luật Cờ Tướng" của Liên đoàn Cờ Việt Nam (QĐ 1409/2004/QĐ-UBTDTT/TT1).
+ *
+ * Bàn cờ: mảng 90 ô, ô = hàng*9 + cột. Hàng 0 ở trên (bên Đen), hàng 9 ở dưới (bên Trắng).
+ * Quân: loại 1..7 = Tướng, Sĩ, Tượng, Mã, Xe, Pháo, Tốt. Trắng = loại, Đen = loại + 8.
+ * Nước đi: số nguyên  từ | (đến << 7).
+ */
+function createEngine() {
+  'use strict';
+
+  const K = 1, A = 2, E = 3, H = 4, R = 5, C = 6, P = 7;
+  const ROW = new Int8Array(90), COL = new Int8Array(90);
+  for (let i = 0; i < 90; i++) { ROW[i] = (i / 9) | 0; COL[i] = i % 9; }
+  const sideOf = (p) => p >> 3;
+  const typeOf = (p) => p & 7;
+
+  // ---------- Zobrist ----------
+  let seed = 0x2545f491;
+  function rnd() { seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5; return seed | 0; }
+  const Z1 = new Int32Array(16 * 90), Z2 = new Int32Array(16 * 90);
+  for (let i = 0; i < Z1.length; i++) { Z1[i] = rnd(); Z2[i] = rnd(); }
+  const ZSIDE = rnd();
+
+  // ---------- Bàn cờ & trạng thái ----------
+  function initialBoard() {
+    const b = new Int8Array(90);
+    const back = [R, H, E, A, K, A, E, H, R];
+    for (let c = 0; c < 9; c++) { b[c] = back[c] + 8; b[81 + c] = back[c]; }
+    b[2 * 9 + 1] = C + 8; b[2 * 9 + 7] = C + 8;
+    b[7 * 9 + 1] = C; b[7 * 9 + 7] = C;
+    for (const c of [0, 2, 4, 6, 8]) { b[3 * 9 + c] = P + 8; b[6 * 9 + c] = P; }
+    return b;
+  }
+
+  function newState(b) {
+    const st = { b, kp: [-1, -1], h1: 0, h2: 0 };
+    for (let sq = 0; sq < 90; sq++) {
+      const p = b[sq];
+      if (!p) continue;
+      if ((p & 7) === K) st.kp[p >> 3] = sq;
+      st.h1 ^= Z1[p * 90 + sq]; st.h2 ^= Z2[p * 90 + sq];
+    }
+    return st;
+  }
+
+  function makeMove(st, mv) {
+    const from = mv & 127, to = mv >> 7, b = st.b;
+    const p = b[from], cap = b[to];
+    b[to] = p; b[from] = 0;
+    st.h1 ^= Z1[p * 90 + from] ^ Z1[p * 90 + to];
+    st.h2 ^= Z2[p * 90 + from] ^ Z2[p * 90 + to];
+    if (cap) { st.h1 ^= Z1[cap * 90 + to]; st.h2 ^= Z2[cap * 90 + to]; }
+    if ((p & 7) === K) st.kp[p >> 3] = to;
+    return cap;
+  }
+
+  function unmakeMove(st, mv, cap) {
+    const from = mv & 127, to = mv >> 7, b = st.b;
+    const p = b[to];
+    b[from] = p; b[to] = cap;
+    st.h1 ^= Z1[p * 90 + from] ^ Z1[p * 90 + to];
+    st.h2 ^= Z2[p * 90 + from] ^ Z2[p * 90 + to];
+    if (cap) { st.h1 ^= Z1[cap * 90 + to]; st.h2 ^= Z2[cap * 90 + to]; }
+    if ((p & 7) === K) st.kp[p >> 3] = from;
+  }
+
+  function boardKey(b, sd) {
+    return String.fromCharCode.apply(null, b) + sd;
+  }
+
+  // ---------- Sinh nước đi ----------
+  const ORTHR = [1, -1, 0, 0], ORTHC = [0, 0, 1, -1];
+  const DIAGR = [1, 1, -1, -1], DIAGC = [1, -1, 1, -1];
+  const HORSE = [
+    [2, 1, 1, 0], [2, -1, 1, 0], [-2, 1, -1, 0], [-2, -1, -1, 0],
+    [1, 2, 0, 1], [-1, 2, 0, 1], [1, -2, 0, -1], [-1, -2, 0, -1],
+  ];
+
+  function inPalace(sd, r, c) {
+    return c >= 3 && c <= 5 && (sd === 0 ? (r >= 7 && r <= 9) : (r >= 0 && r <= 2));
+  }
+
+  function genPseudo(b, sd, capsOnly) {
+    const out = [];
+    for (let sq = 0; sq < 90; sq++) {
+      const p = b[sq];
+      if (p === 0 || (p >> 3) !== sd) continue;
+      const t = p & 7, r = ROW[sq], c = COL[sq];
+      if (t === R) {
+        for (let d = 0; d < 4; d++) {
+          const dr = ORTHR[d], dc = ORTHC[d];
+          let nr = r + dr, nc = c + dc;
+          while (nr >= 0 && nr < 10 && nc >= 0 && nc < 9) {
+            const to = nr * 9 + nc, q = b[to];
+            if (q === 0) { if (!capsOnly) out.push(sq | (to << 7)); }
+            else { if ((q >> 3) !== sd) out.push(sq | (to << 7)); break; }
+            nr += dr; nc += dc;
+          }
+        }
+      } else if (t === C) {
+        for (let d = 0; d < 4; d++) {
+          const dr = ORTHR[d], dc = ORTHC[d];
+          let nr = r + dr, nc = c + dc, jumped = false;
+          while (nr >= 0 && nr < 10 && nc >= 0 && nc < 9) {
+            const to = nr * 9 + nc, q = b[to];
+            if (!jumped) {
+              if (q === 0) { if (!capsOnly) out.push(sq | (to << 7)); }
+              else jumped = true;
+            } else if (q !== 0) {
+              if ((q >> 3) !== sd) out.push(sq | (to << 7));
+              break;
+            }
+            nr += dr; nc += dc;
+          }
+        }
+      } else if (t === H) {
+        for (let i = 0; i < 8; i++) {
+          const h = HORSE[i];
+          const nr = r + h[0], nc = c + h[1];
+          if (nr < 0 || nr > 9 || nc < 0 || nc > 8) continue;
+          if (b[(r + h[2]) * 9 + (c + h[3])] !== 0) continue; // cản chân mã
+          const to = nr * 9 + nc, q = b[to];
+          if (q === 0) { if (!capsOnly) out.push(sq | (to << 7)); }
+          else if ((q >> 3) !== sd) out.push(sq | (to << 7));
+        }
+      } else if (t === P) {
+        const fwd = sd === 0 ? -1 : 1;
+        const crossed = sd === 0 ? r <= 4 : r >= 5;
+        let nr = r + fwd;
+        if (nr >= 0 && nr <= 9) {
+          const to = nr * 9 + c, q = b[to];
+          if (q === 0) { if (!capsOnly) out.push(sq | (to << 7)); }
+          else if ((q >> 3) !== sd) out.push(sq | (to << 7));
+        }
+        if (crossed) {
+          for (let s = -1; s <= 1; s += 2) {
+            const nc = c + s;
+            if (nc < 0 || nc > 8) continue;
+            const to = r * 9 + nc, q = b[to];
+            if (q === 0) { if (!capsOnly) out.push(sq | (to << 7)); }
+            else if ((q >> 3) !== sd) out.push(sq | (to << 7));
+          }
+        }
+      } else if (t === K) {
+        for (let d = 0; d < 4; d++) {
+          const nr = r + ORTHR[d], nc = c + ORTHC[d];
+          if (!inPalace(sd, nr, nc)) continue;
+          const to = nr * 9 + nc, q = b[to];
+          if (q === 0) { if (!capsOnly) out.push(sq | (to << 7)); }
+          else if ((q >> 3) !== sd) out.push(sq | (to << 7));
+        }
+      } else if (t === A) {
+        for (let d = 0; d < 4; d++) {
+          const nr = r + DIAGR[d], nc = c + DIAGC[d];
+          if (!inPalace(sd, nr, nc)) continue;
+          const to = nr * 9 + nc, q = b[to];
+          if (q === 0) { if (!capsOnly) out.push(sq | (to << 7)); }
+          else if ((q >> 3) !== sd) out.push(sq | (to << 7));
+        }
+      } else if (t === E) {
+        for (let d = 0; d < 4; d++) {
+          const er = r + DIAGR[d], ec = c + DIAGC[d];
+          const nr = r + 2 * DIAGR[d], nc = c + 2 * DIAGC[d];
+          if (nr < 0 || nr > 9 || nc < 0 || nc > 8) continue;
+          if (sd === 0 ? nr < 5 : nr > 4) continue; // không qua sông
+          if (b[er * 9 + ec] !== 0) continue;       // cản mắt tượng
+          const to = nr * 9 + nc, q = b[to];
+          if (q === 0) { if (!capsOnly) out.push(sq | (to << 7)); }
+          else if ((q >> 3) !== sd) out.push(sq | (to << 7));
+        }
+      }
+    }
+    return out;
+  }
+
+  const HD = [[2, 1], [2, -1], [-2, 1], [-2, -1], [1, 2], [-1, 2], [1, -2], [-1, -2]];
+
+  /** Tướng của bên `sd` có đang bị chiếu không (kể cả hai tướng đối mặt). */
+  function inCheck(st, sd) {
+    const b = st.b, g = st.kp[sd], en = 1 - sd, gr = ROW[g], gc = COL[g];
+    for (let d = 0; d < 4; d++) {
+      const dr = ORTHR[d], dc = ORTHC[d];
+      let r = gr + dr, c = gc + dc, screen = false;
+      while (r >= 0 && r < 10 && c >= 0 && c < 9) {
+        const q = b[r * 9 + c];
+        if (q !== 0) {
+          if (!screen) {
+            if ((q >> 3) === en) {
+              const t = q & 7;
+              if (t === R || (t === K && dc === 0)) return true;
+            }
+            screen = true;
+          } else {
+            if ((q >> 3) === en && (q & 7) === C) return true;
+            break;
+          }
+        }
+        r += dr; c += dc;
+      }
+    }
+    const horse = H + en * 8;
+    for (let i = 0; i < 8; i++) {
+      const hr = gr - HD[i][0], hc = gc - HD[i][1];
+      if (hr < 0 || hr > 9 || hc < 0 || hc > 8) continue;
+      if (b[hr * 9 + hc] !== horse) continue;
+      const lr = hr + (HD[i][0] === 2 ? 1 : HD[i][0] === -2 ? -1 : 0);
+      const lc = hc + (HD[i][1] === 2 ? 1 : HD[i][1] === -2 ? -1 : 0);
+      if (b[lr * 9 + lc] === 0) return true;
+    }
+    const pawn = P + en * 8;
+    if (en === 0) {
+      if (gr + 1 <= 9 && b[(gr + 1) * 9 + gc] === pawn) return true;
+      if (gr <= 4) {
+        if (gc > 0 && b[gr * 9 + gc - 1] === pawn) return true;
+        if (gc < 8 && b[gr * 9 + gc + 1] === pawn) return true;
+      }
+    } else {
+      if (gr - 1 >= 0 && b[(gr - 1) * 9 + gc] === pawn) return true;
+      if (gr >= 5) {
+        if (gc > 0 && b[gr * 9 + gc - 1] === pawn) return true;
+        if (gc < 8 && b[gr * 9 + gc + 1] === pawn) return true;
+      }
+    }
+    return false;
+  }
+
+  function genLegal(st, sd, capsOnly) {
+    const pm = genPseudo(st.b, sd, capsOnly), out = [];
+    for (let i = 0; i < pm.length; i++) {
+      const mv = pm[i];
+      const cap = makeMove(st, mv);
+      if (!inCheck(st, sd)) out.push(mv);
+      unmakeMove(st, mv, cap);
+    }
+    return out;
+  }
+
+  // ---------- Ghi nước đi kiểu Việt Nam: "Pháo 2 bình 5" ----------
+  const NAMES = ['', 'Tướng', 'Sĩ', 'Tượng', 'Mã', 'Xe', 'Pháo', 'Tốt'];
+
+  function notate(b, mv) {
+    const from = mv & 127, to = mv >> 7;
+    const p = b[from], sd = p >> 3, t = p & 7;
+    const fr = ROW[from], fc = COL[from], tr = ROW[to], tc = COL[to];
+    const file = (c) => (sd === 0 ? 9 - c : c + 1);
+    // quân cùng loại, cùng bên, cùng cột
+    const same = [];
+    for (let r = 0; r < 10; r++) {
+      const q = b[r * 9 + fc];
+      if (q === p) same.push(r);
+    }
+    let head;
+    if (same.length > 1) {
+      // thứ tự từ phía đối phương về phía mình
+      const order = same.slice().sort((x, y) => (sd === 0 ? x - y : y - x));
+      const idx = order.indexOf(fr);
+      let label;
+      if (order.length === 2) label = idx === 0 ? 'trước' : 'sau';
+      else if (order.length === 3) label = ['trước', 'giữa', 'sau'][idx];
+      else label = idx === 0 ? 'trước' : idx === order.length - 1 ? 'sau' : 'thứ ' + (idx + 1);
+      head = NAMES[t] + ' ' + label;
+    } else {
+      head = NAMES[t] + ' ' + file(fc);
+    }
+    let dir, target;
+    if (tr === fr) { dir = 'bình'; target = file(tc); }
+    else {
+      const forward = sd === 0 ? tr < fr : tr > fr;
+      dir = forward ? 'tiến' : 'thoái';
+      target = (t === H || t === E || t === A) ? file(tc) : Math.abs(tr - fr);
+    }
+    return head + ' ' + dir + ' ' + target;
+  }
+
+  // ---------- Đánh giá ----------
+  function pieceScore(p, sq) {
+    const sd = p >> 3, t = p & 7, c = COL[sq];
+    const r = sd === 0 ? ROW[sq] : 9 - ROW[sq]; // 0 = đáy phía đối phương, 9 = đáy nhà mình
+    const cen = 4 - Math.abs(c - 4);
+    switch (t) {
+      case P:
+        if (r <= 4) return 100 + 80 + (4 - r) * 8 + cen * 5;
+        return 100 + (6 - r) * 4;
+      case H: return 400 + cen * 7 + (9 - r) * 2;
+      case C: return 450 + cen * 5 + (c === 4 ? 10 : 0);
+      case R: return 900 + (9 - r) * 3 + cen * 2;
+      case A: return 200;
+      case E: return 200;
+      default: return -(9 - r) * 12 - Math.abs(c - 4) * 10; // Tướng nên ở yên giữa cung
+    }
+  }
+  const BASE = [0, 0, 200, 200, 400, 900, 450, 100];
+
+  function evaluate(st, sd) {
+    const b = st.b;
+    let s = 0;
+    for (let sq = 0; sq < 90; sq++) {
+      const p = b[sq];
+      if (!p) continue;
+      const v = pieceScore(p, sq);
+      if ((p >> 3) === sd) s += v; else s -= v;
+    }
+    return s + 8;
+  }
+
+  // ---------- Tìm kiếm ----------
+  const MATE = 30000, INF = 32000, TIMEOUT = { timeout: true };
+  let nodes = 0, deadline = 0;
+  let TT = new Map();
+  let killers = [];
+
+  function scoreCapture(b, mv) {
+    return BASE[b[mv >> 7] & 7] * 10 - BASE[b[mv & 127] & 7] + 1000;
+  }
+
+  function orderMoves(st, moves, ttMove, ply) {
+    const b = st.b;
+    const sc = new Array(moves.length);
+    const k = killers[ply];
+    for (let i = 0; i < moves.length; i++) {
+      const mv = moves[i];
+      let s = 0;
+      if (mv === ttMove) s = 1e6;
+      else if (b[mv >> 7]) s = 1e4 + scoreCapture(b, mv);
+      else if (k && (mv === k[0] || mv === k[1])) s = 5000;
+      sc[i] = s;
+    }
+    const idx = moves.map((_, i) => i).sort((x, y) => sc[y] - sc[x]);
+    return idx.map((i) => moves[i]);
+  }
+
+  function qsearch(st, sd, alpha, beta, qd) {
+    nodes++;
+    const stand = evaluate(st, sd);
+    if (stand >= beta) return stand;
+    if (stand > alpha) alpha = stand;
+    if (qd <= 0) return stand;
+    const caps = genPseudo(st.b, sd, true);
+    caps.sort((x, y) => scoreCapture(st.b, y) - scoreCapture(st.b, x));
+    for (let i = 0; i < caps.length; i++) {
+      const mv = caps[i];
+      const cap = makeMove(st, mv);
+      if (inCheck(st, sd)) { unmakeMove(st, mv, cap); continue; }
+      const sc = -qsearch(st, 1 - sd, -beta, -alpha, qd - 1);
+      unmakeMove(st, mv, cap);
+      if (sc >= beta) return sc;
+      if (sc > alpha) alpha = sc;
+    }
+    return alpha;
+  }
+
+  function negamax(st, sd, depth, alpha, beta, ply) {
+    nodes++;
+    if ((nodes & 2047) === 0 && Date.now() > deadline) throw TIMEOUT;
+    const chk = inCheck(st, sd);
+    if (chk && ply < 24) depth++;
+    if (depth <= 0) return qsearch(st, sd, alpha, beta, 4);
+
+    const key = (st.h1 & 0x1fffff) * 4294967296 + (((sd ? st.h2 ^ ZSIDE : st.h2)) >>> 0);
+    const ent = TT.get(key);
+    let ttMove = 0;
+    if (ent) {
+      ttMove = ent.m;
+      if (ent.d >= depth) {
+        if (ent.f === 0) return ent.s;
+        if (ent.f === 1 && ent.s >= beta) return ent.s;
+        if (ent.f === 2 && ent.s <= alpha) return ent.s;
+      }
+    }
+
+    const moves = orderMoves(st, genLegal(st, sd), ttMove, ply);
+    if (moves.length === 0) return -(MATE - ply); // hết nước đi là thua
+    const a0 = alpha;
+    let best = -INF, bestMv = 0;
+    for (let i = 0; i < moves.length; i++) {
+      const mv = moves[i];
+      const cap = makeMove(st, mv);
+      const sc = -negamax(st, 1 - sd, depth - 1, -beta, -alpha, ply + 1);
+      unmakeMove(st, mv, cap);
+      if (sc > best) { best = sc; bestMv = mv; }
+      if (sc > alpha) alpha = sc;
+      if (alpha >= beta) {
+        if (!st.b[mv >> 7]) {
+          const k = killers[ply] || (killers[ply] = [0, 0]);
+          if (k[0] !== mv) { k[1] = k[0]; k[0] = mv; }
+        }
+        break;
+      }
+    }
+    if (TT.size > 600000) TT = new Map();
+    TT.set(key, { d: depth, s: best, f: best <= a0 ? 2 : best >= beta ? 1 : 0, m: bestMv });
+    return best;
+  }
+
+  function rootSearch(st, sd, rootMoves, depth, override, exact) {
+    let alpha = -INF, bestScore = -INF, bestMv = rootMoves[0];
+    const scores = [];
+    for (let i = 0; i < rootMoves.length; i++) {
+      const mv = rootMoves[i];
+      let sc;
+      if (override.has(mv)) sc = override.get(mv);
+      else {
+        const cap = makeMove(st, mv);
+        sc = exact
+          ? -negamax(st, 1 - sd, depth - 1, -INF, INF, 1)
+          : -negamax(st, 1 - sd, depth - 1, -INF, -alpha, 1);
+        unmakeMove(st, mv, cap);
+      }
+      scores.push([mv, sc]);
+      if (sc > bestScore) { bestScore = sc; bestMv = mv; if (!exact && sc > alpha) alpha = sc; }
+    }
+    return { best: bestMv, score: bestScore, scores };
+  }
+
+  /**
+   * opts: { maxDepth, timeMs, margin, exact, override: [[mv, score], ...] }
+   * Trả về { mv, score, depth, nodes } hoặc null nếu hết nước đi.
+   */
+  function search(board, sd, opts) {
+    opts = opts || {};
+    const st = newState(Int8Array.from(board));
+    nodes = 0; killers = []; TT = new Map();
+    deadline = Date.now() + (opts.timeMs || 1000);
+    const override = new Map(opts.override || []);
+    let rootMoves = genLegal(st, sd);
+    if (!rootMoves.length) return null;
+    rootMoves = orderMoves(st, rootMoves, 0, 0);
+    let best = rootMoves[0], bestScore = 0, doneDepth = 0, scores = null;
+    const maxD = opts.maxDepth || 4;
+    const exact = !!opts.exact;
+    for (let d = 1; d <= maxD; d++) {
+      try {
+        const res = rootSearch(st, sd, rootMoves, d, override, exact && d === maxD);
+        best = res.best; bestScore = res.score; scores = res.scores; doneDepth = d;
+        rootMoves = [best].concat(rootMoves.filter((m) => m !== best));
+        if (Math.abs(bestScore) > MATE - 100 && !exact) break;
+      } catch (e) {
+        if (e !== TIMEOUT) throw e;
+        break;
+      }
+    }
+    let chosen = best, chosenScore = bestScore;
+    if (exact && scores && opts.margin > 0 && doneDepth === maxD) {
+      const pool = scores.filter((s) => s[1] >= bestScore - opts.margin);
+      const pick = pool[(Math.random() * pool.length) | 0];
+      chosen = pick[0]; chosenScore = pick[1];
+    }
+    return { mv: chosen, score: chosenScore, bestScore, depth: doneDepth, nodes };
+  }
+
+  // ---------- Luật chiếu mãi / bắt mãi (Điều 22–24) ----------
+  const crossed = (p, r) => ((p >> 3) === 0 ? r <= 4 : r >= 5);
+
+  /**
+   * Phân loại nước vừa đi của bên X trên bàn `b` (sau nước đi, đến lượt bên Y).
+   * Trả về { check, chased: [id quân bị bắt] }. ids: ô -> mã định danh quân.
+   */
+  function classify(b, X, ids) {
+    const st = newState(Int8Array.from(b));
+    const Y = 1 - X;
+    if (inCheck(st, Y)) return { check: true, chased: [] };
+    const yMoves = genLegal(st, Y);
+    const chased = new Set();
+    const caps = genLegal(st, X, true);
+    for (const mv of caps) {
+      const a = mv & 127, t = mv >> 7;
+      const pa = st.b[a], pt = st.b[t];
+      const ta = pa & 7, tt = pt & 7;
+      if (tt === K) continue;
+      // Tướng và Tốt bắt mãi chỉ bị xử hòa (Điểm 9) -> không tính là quân đuổi bắt
+      if (ta === K || ta === P) continue;
+      // Tốt chưa qua sông thì được phép bắt mãi (Điểm 3)
+      if (tt === P && !crossed(pt, ROW[t])) continue;
+      // Xe-Xe, Pháo-Pháo, Mã-Mã mà bên kia ăn lại được: đòi đổi quân, không phải đuổi bắt (24.20)
+      if (ta === tt && (ta === R || ta === C || ta === H)) {
+        if (yMoves.some((m) => (m & 127) === t && (m >> 7) === a)) continue;
+      }
+      // Căn thật: sau khi bị ăn, bên kia thật sự ăn lại được. Căn giả = không ăn lại được.
+      const cap = makeMove(st, mv);
+      const guarded = genLegal(st, Y, true).some((m) => (m >> 7) === t);
+      unmakeMove(st, mv, cap);
+      // Mã/Pháo đuổi Xe thì dù có căn thật vẫn là đuổi bắt (Điểm 6)
+      if (!guarded || ((ta === H || ta === C) && tt === R)) chased.add(ids[t]);
+    }
+    return { check: false, chased: Array.from(chased) };
+  }
+
+  /**
+   * Xét một chu kỳ lặp lại.
+   * boards[0..m] là các thế cờ, moves[0..m-1] là các nước đi nối chúng, startSide là bên đi nước đầu.
+   * Trả về { viol: [lý do bên Trắng, lý do bên Đen] } với lý do là 'check' | 'chase' | null.
+   */
+  function judgeCycle(boards, moves, startSide) {
+    const ids = new Int16Array(90).fill(-1);
+    for (let sq = 0; sq < 90; sq++) if (boards[0][sq]) ids[sq] = sq;
+    const rec = [{ checks: [], chased: [] }, { checks: [], chased: [] }];
+    for (let i = 0; i < moves.length; i++) {
+      const mover = startSide ^ (i & 1);
+      const from = moves[i] & 127, to = moves[i] >> 7;
+      ids[to] = ids[from]; ids[from] = -1;
+      const cls = classify(boards[i + 1], mover, ids);
+      rec[mover].checks.push(cls.check);
+      rec[mover].chased.push(cls.chased);
+    }
+    const viol = [null, null];
+    for (let x = 0; x < 2; x++) {
+      const { checks, chased } = rec[x];
+      if (!checks.length) continue;
+      if (checks.every(Boolean)) { viol[x] = 'check'; continue; }          // chiếu mãi
+      if (checks.some(Boolean)) continue;                                  // một chiếu một bắt/dừng -> hòa
+      let common = new Set(chased[0]);
+      for (let i = 1; i < chased.length && common.size; i++) {
+        const s = new Set(chased[i]);
+        common = new Set([...common].filter((v) => s.has(v)));
+      }
+      if (common.size) viol[x] = 'chase';                                  // đuổi bắt mãi một quân
+    }
+    return { viol };
+  }
+
+  return {
+    K, A, E, H, R, C, P, ROW, COL, NAMES,
+    sideOf, typeOf, initialBoard, newState, makeMove, unmakeMove, boardKey,
+    genLegal, genPseudo, inCheck, notate, evaluate, search, judgeCycle, classify,
+  };
+}
+
+
+
+</script>
+<script>
+(function () {
+  'use strict';
+  const Eng = createEngine();
+  const { ROW, COL } = Eng;
+  const $ = (id) => document.getElementById(id);
+
+  // ---------- Hằng số giao diện ----------
+  const GLYPH = [
+    ['', '帥', '仕', '相', '馬', '車', '炮', '兵'],
+    ['', '將', '士', '象', '馬', '車', '炮', '卒'],
+  ];
+  const GLYPH_VI = [
+    ['', 'Soái', 'Sĩ', 'Tượng', 'Mã', 'Xe', 'Pháo', 'Binh'],
+    ['', 'Tướng', 'Sĩ', 'Tượng', 'Mã', 'Xe', 'Pháo', 'Tốt'],
+  ];
+  const glyph = (sd, ty) => (S.pieceStyle === 'vi' ? GLYPH_VI : GLYPH)[sd][ty];
+  const PIECE_NAME = ['', 'Tướng', 'Sĩ', 'Tượng', 'Mã', 'Xe', 'Pháo', 'Tốt'];
+  const SIDE_NAME = ['Trắng (đỏ)', 'Đen'];
+  const SIDE_SHORT = ['Trắng', 'Đen'];
+  const LEVELS = [
+    { name: 'Dễ', maxDepth: 2, timeMs: 400, margin: 300, exact: true },
+    { name: 'Vừa', maxDepth: 3, timeMs: 800, margin: 40, exact: true },
+    { name: 'Khó', maxDepth: 6, timeMs: 2500, margin: 0 },
+    { name: 'Cao thủ', maxDepth: 9, timeMs: 5000, margin: 0 },
+  ];
+  const NS = 'http://www.w3.org/2000/svg';
+  const CELL = 56, M = 52;
+  const BW = 8 * CELL + 2 * M, BH = 9 * CELL + 2 * M;
+
+  // ---------- Trạng thái ----------
+  const S = { mode: 'ai', human: 0, level: 1, hints: true, sound: true, flipped: false, pieceStyle: 'han' };
+  let G = null;
+  let aiToken = 0;
+
+  function freshGame() {
+    const b = Eng.initialBoard();
+    return { pos: [b], moves: [], notes: [], keys: [Eng.boardKey(b, 0)], caps: [], over: null,
+      sel: null, legal: [], hint: null, hintText: '', thinking: false, busy: false, anim: null, viewing: false };
+  }
+  const cur = () => G.pos[G.pos.length - 1];
+  const turn = () => G.moves.length & 1;
+  const humanTurn = () => S.mode === 'pvp' || turn() === S.human;
+  const stateOf = (b) => Eng.newState(Int8Array.from(b));
+
+  // ---------- SVG ----------
+  const svg = $('board');
+  svg.setAttribute('viewBox', `0 0 ${BW} ${BH}`);
+  function el(name, attrs, parent) {
+    const e = document.createElementNS(NS, name);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  const defs = el('defs', {}, svg);
+  const rg = el('radialGradient', { id: 'pg', cx: '35%', cy: '30%', r: '75%' }, defs);
+  el('stop', { offset: '0', 'stop-color': '#fff8e1' }, rg);
+  el('stop', { offset: '1', 'stop-color': '#e3bf7c' }, rg);
+  const gb = el('linearGradient', { id: 'wood', x1: '0', y1: '0', x2: '1', y2: '1' }, defs);
+  el('stop', { offset: '0', 'stop-color': '#f0cf8e' }, gb);
+  el('stop', { offset: '1', 'stop-color': '#dcae62' }, gb);
+  const gg = el('radialGradient', { id: 'glow' }, defs);
+  el('stop', { offset: '0', 'stop-color': '#ff3b30', 'stop-opacity': '.85' }, gg);
+  el('stop', { offset: '1', 'stop-color': '#ff3b30', 'stop-opacity': '0' }, gg);
+
+  const gGrid = el('g', {}, svg);
+  const gLabels = el('g', {}, svg);
+  const gHl = el('g', {}, svg);
+  const gPieces = el('g', {}, svg);
+  const gMarks = el('g', {}, svg);
+
+  const lineStyle = { stroke: '#5a3a14', 'stroke-width': 1.6, 'stroke-linecap': 'round' };
+  function line(x1, y1, x2, y2, extra) {
+    el('line', Object.assign({ x1, y1, x2, y2 }, lineStyle, extra || {}), gGrid);
+  }
+  const X = (c) => M + c * CELL, Y = (r) => M + r * CELL;
+
+  function drawGrid() {
+    el('rect', { x: 0, y: 0, width: BW, height: BH, rx: 14, fill: 'url(#wood)' }, gGrid);
+    el('rect', { x: M - 10, y: M - 10, width: 8 * CELL + 20, height: 9 * CELL + 20, fill: 'none', stroke: '#5a3a14', 'stroke-width': 3 }, gGrid);
+    for (let r = 0; r < 10; r++) line(X(0), Y(r), X(8), Y(r));
+    for (let c = 0; c < 9; c++) {
+      if (c === 0 || c === 8) line(X(c), Y(0), X(c), Y(9));
+      else { line(X(c), Y(0), X(c), Y(4)); line(X(c), Y(5), X(c), Y(9)); }
+    }
+    line(X(3), Y(0), X(5), Y(2)); line(X(5), Y(0), X(3), Y(2));
+    line(X(3), Y(7), X(5), Y(9)); line(X(5), Y(7), X(3), Y(9));
+    const tick = (r, c) => {
+      const d = 5, l = 12;
+      for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
+        if ((c === 0 && sx === -1) || (c === 8 && sx === 1)) continue;
+        const x = X(c) + sx * d, y = Y(r) + sy * d;
+        line(x, y, x + sx * l, y, { 'stroke-width': 1.3 });
+        line(x, y, x, y + sy * l, { 'stroke-width': 1.3 });
+      }
+    };
+    [[2, 1], [2, 7], [7, 1], [7, 7]].forEach(([r, c]) => tick(r, c));
+    [0, 2, 4, 6, 8].forEach((c) => { tick(3, c); tick(6, c); });
+    const t1 = el('text', { x: X(2) + 4, y: Y(4.5), 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': 26, fill: '#6b4518', 'font-family': 'KaiTi,STKaiti,"Noto Serif CJK SC",serif', 'letter-spacing': 6 }, gGrid);
+    t1.textContent = '楚河';
+    const t2 = el('text', { x: X(6) - 4, y: Y(4.5), 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': 26, fill: '#6b4518', 'font-family': 'KaiTi,STKaiti,"Noto Serif CJK SC",serif', 'letter-spacing': 6 }, gGrid);
+    t2.textContent = '漢界';
+  }
+  drawGrid();
+
+  function drawLabels() {
+    gLabels.textContent = '';
+    for (let dc = 0; dc < 9; dc++) {
+      const top = el('text', { x: X(dc), y: M - 31, 'text-anchor': 'middle', 'font-size': 15, fill: '#6b4518', 'font-weight': 600 }, gLabels);
+      top.textContent = dc + 1;
+      const bot = el('text', { x: X(dc), y: BH - M + 38, 'text-anchor': 'middle', 'font-size': 15, fill: '#6b4518', 'font-weight': 600 }, gLabels);
+      bot.textContent = 9 - dc;
+    }
+  }
+  drawLabels();
+
+  const flipR = (r) => (S.flipped ? 9 - r : r);
+  const flipC = (c) => (S.flipped ? 8 - c : c);
+  const sqX = (sq) => X(flipC(COL[sq]));
+  const sqY = (sq) => Y(flipR(ROW[sq]));
+
+  function hitSquare(ev) {
+    const rect = svg.getBoundingClientRect();
+    const x = ((ev.clientX - rect.left) * BW) / rect.width;
+    const y = ((ev.clientY - rect.top) * BH) / rect.height;
+    const dc = Math.round((x - M) / CELL), dr = Math.round((y - M) / CELL);
+    if (dc < 0 || dc > 8 || dr < 0 || dr > 9) return -1;
+    const c = S.flipped ? 8 - dc : dc, r = S.flipped ? 9 - dr : dr;
+    return r * 9 + c;
+  }
+
+  // ---------- Âm thanh ----------
+  let actx = null;
+  function tone(freq, dur, type, vol, delay) {
+    if (!S.sound) return;
+    try {
+      if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+      if (actx.state === 'suspended') actx.resume();
+      const t0 = actx.currentTime + (delay || 0);
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = type || 'sine'; o.frequency.setValueAtTime(freq, t0);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(vol || 0.15, t0 + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g); g.connect(actx.destination);
+      o.start(t0); o.stop(t0 + dur + 0.02);
+    } catch (e) { /* bỏ qua nếu trình duyệt chặn âm thanh */ }
+  }
+  const SND = {
+    move() { tone(300, 0.07, 'triangle', 0.22); tone(180, 0.1, 'sine', 0.18, 0.02); },
+    capture() { tone(200, 0.1, 'square', 0.12); tone(120, 0.16, 'triangle', 0.25, 0.03); },
+    check() { tone(660, 0.12, 'square', 0.1, 0.08); tone(880, 0.16, 'square', 0.1, 0.2); },
+    win() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.22, 'triangle', 0.18, i * 0.14)); },
+    lose() { [392, 330, 262].forEach((f, i) => tone(f, 0.28, 'triangle', 0.18, i * 0.18)); },
+    bad() { tone(160, 0.18, 'sawtooth', 0.12); },
+  };
+
+  // ---------- Thông báo ngắn ----------
+  let toastTimer = 0;
+  function toast(msg, warn, ms) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.className = 'show' + (warn ? ' warn' : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.className = ''; }, ms || 3200);
+  }
+
+  // ---------- Web Worker cho máy suy nghĩ ----------
+  let worker = null, jobId = 0;
+  const pending = new Map();
+  function initWorker() {
+    try {
+      const src = createEngine.toString() +
+        '\nconst Eng = createEngine();\nonmessage = function (e) { const d = e.data; postMessage({ id: d.id, r: Eng.search(d.board, d.side, d.opts) }); };';
+      const url = URL.createObjectURL(new Blob([src], { type: 'application/javascript' }));
+      worker = new Worker(url);
+      worker.onmessage = (e) => { const f = pending.get(e.data.id); if (f) { pending.delete(e.data.id); f(e.data.r); } };
+      worker.onerror = () => { worker = null; pending.forEach((f) => f(null)); pending.clear(); };
+    } catch (e) { worker = null; }
+  }
+  function resetWorker() {
+    if (worker) { try { worker.terminate(); } catch (e) { /* */ } }
+    pending.clear();
+    initWorker();
+  }
+  function runSearch(board, side, opts) {
+    return new Promise((resolve) => {
+      if (worker) {
+        const id = ++jobId;
+        pending.set(id, resolve);
+        worker.postMessage({ id, board: Int8Array.from(board), side, opts });
+      } else {
+        setTimeout(() => resolve(Eng.search(board, side, opts)), 40);
+      }
+    });
+  }
+  initWorker();
+
+  // ---------- Luật lặp thế / chiếu mãi / bắt mãi ----------
+  const countKey = (key) => { let n = 0; for (const k of G.keys) if (k === key) n++; return n; };
+
+  function repetitionVerdict(key, mv, nb, mover) {
+    const j = G.keys.indexOf(key);
+    const boards = G.pos.slice(j).concat([nb]);
+    const moves = G.moves.slice(j).concat([mv]);
+    const { viol } = Eng.judgeCycle(boards, moves, j & 1);
+    const opp = 1 - mover;
+    if (viol[mover] && viol[opp]) return { kind: 'draw', both: true, viol };
+    if (viol[mover]) return { kind: 'mover-loses', reason: viol[mover], viol };
+    if (viol[opp]) return { kind: 'opp-loses', reason: viol[opp], viol };
+    return { kind: 'draw', both: false, viol };
+  }
+  const REASON = { check: 'chiếu mãi (nước nào cũng chiếu Tướng)', chase: 'đuổi bắt mãi một quân' };
+
+  // ---------- Đi quân ----------
+  function applyRaw(mv) {
+    const mover = G.moves.length & 1;
+    const board = cur();
+    const note = Eng.notate(board, mv);
+    const st = stateOf(board);
+    const cap = Eng.makeMove(st, mv);
+    G.moves.push(mv); G.notes.push(note); G.pos.push(st.b); G.caps.push(cap);
+    G.keys.push(Eng.boardKey(st.b, 1 - mover));
+    return { cap, mover };
+  }
+
+  function tryMove(mv, byHuman) {
+    const mover = G.moves.length & 1;
+    const board = cur();
+    const st2 = stateOf(board);
+    const capped = Eng.makeMove(st2, mv);
+    const key = Eng.boardKey(st2.b, 1 - mover);
+    let verdict = null;
+    if (countKey(key) >= 2) verdict = repetitionVerdict(key, mv, st2.b, mover);
+    if (verdict && verdict.kind === 'mover-loses' && byHuman) {
+      SND.bad();
+      toast(`Nước này lặp lại thế cờ lần thứ 3 và là ${REASON[verdict.reason]} – phạm luật! Hãy đổi nước đi khác.`, true, 5200);
+      G.sel = null; render();
+      return false;
+    }
+    let warn = null;
+    if (byHuman && !verdict && countKey(key) === 1) {
+      const w = repetitionVerdict(key, mv, st2.b, mover);
+      if (w.viol[mover] && !w.viol[1 - mover]) warn = w.viol[mover];
+    }
+    const { cap } = applyRaw(mv);
+    G.anim = { from: mv & 127, to: mv >> 7 };
+    G.sel = null; G.hint = null; G.hintText = '';
+    G.thinking = false;
+    afterMove(verdict, cap, mover);
+    if (warn && !G.over) toast(`⚠ Bạn đang ${REASON[warn]} và thế cờ đã lặp lại. Nếu lặp lại lần nữa bạn sẽ bị xử thua – hãy đổi nước đi!`, true, 6500);
+    return true;
+  }
+
+  function afterMove(verdict, cap, mover) {
+    const t = turn();
+    const st = stateOf(cur());
+    const chk = Eng.inCheck(st, t);
+    if (verdict) {
+      if (verdict.kind === 'opp-loses') {
+        finish(mover, `${SIDE_NAME[1 - mover]} phạm luật ${REASON[verdict.reason]} nên bị xử thua.`);
+      } else if (verdict.kind === 'mover-loses') {
+        finish(1 - mover, `${SIDE_NAME[mover]} phạm luật ${REASON[verdict.reason]} nên bị xử thua.`);
+      } else if (verdict.both) {
+        finish(null, 'Hai bên cùng phạm luật chiếu mãi / bắt mãi nên ván cờ được xử hòa.');
+      } else {
+        finish(null, 'Thế cờ lặp lại 3 lần mà không bên nào phạm luật nên ván cờ hòa.');
+      }
+    } else {
+      checkEnd(chk);
+    }
+    if (!G.over) {
+      if (chk) SND.check(); else if (cap) SND.capture(); else SND.move();
+    }
+    render();
+    if (!G.over) { saveGame(); maybeAI(); } else saveGame();
+  }
+
+  function checkEnd(chk) {
+    const t = turn();
+    const b = cur();
+    const st = stateOf(b);
+    if (!Eng.genLegal(st, t).length) {
+      if (chk) finish(1 - t, `Chiếu bí! ${SIDE_NAME[1 - t]} thắng.`);
+      else finish(1 - t, `Tướng ${SIDE_SHORT[t]} bị vây chặt, không còn nước đi nên ${SIDE_NAME[t]} thua.`);
+      return;
+    }
+    let attackers = 0;
+    for (let sq = 0; sq < 90; sq++) {
+      const ty = b[sq] & 7;
+      if (b[sq] && (ty === Eng.R || ty === Eng.C || ty === Eng.H || ty === Eng.P)) attackers++;
+    }
+    if (!attackers) { finish(null, 'Hai bên đều không còn Xe, Pháo, Mã, Tốt để tấn công nên ván cờ hòa.'); return; }
+    let since = 0;
+    for (let i = G.caps.length - 1; i >= 0 && !G.caps[i]; i--) since++;
+    if (since >= 100) finish(null, '50 nước liên tiếp không bên nào ăn quân nên ván cờ hòa.');
+  }
+
+  function finish(winner, text) {
+    G.over = { winner, text };
+    G.thinking = false; G.sel = null; G.hint = null; G.hintText = '';
+    aiToken++;
+    if (winner === null) { SND.move(); }
+    else if (S.mode === 'ai') { winner === S.human ? SND.win() : SND.lose(); }
+    else SND.win();
+    G.viewing = false;
+  }
+
+  // ---------- Máy suy nghĩ ----------
+  function aiOverride() {
+    const side = turn(), b = cur(), out = [];
+    const moves = Eng.genLegal(stateOf(b), side);
+    for (const mv of moves) {
+      const st2 = stateOf(b); Eng.makeMove(st2, mv);
+      const key = Eng.boardKey(st2.b, 1 - side);
+      if (countKey(key) >= 2) {
+        const v = repetitionVerdict(key, mv, st2.b, side);
+        out.push([mv, v.kind === 'mover-loses' ? -29000 : v.kind === 'opp-loses' ? 29000 : 0]);
+      }
+    }
+    return out;
+  }
+
+  function maybeAI() {
+    if (G.over || S.mode !== 'ai' || turn() === S.human || G.thinking) return;
+    G.thinking = true;
+    render();
+    const token = ++aiToken;
+    const lv = LEVELS[S.level];
+    const opening = G.moves.length < 4;
+    const opts = Object.assign({}, lv, { override: aiOverride() });
+    if (opening && S.level >= 1) { opts.exact = true; opts.margin = 40; opts.maxDepth = Math.min(opts.maxDepth, 3); opts.timeMs = 800; }
+    const t0 = Date.now();
+    runSearch(cur(), turn(), opts).then((res) => {
+      if (token !== aiToken) return;
+      const wait = Math.max(0, 450 - (Date.now() - t0));
+      setTimeout(() => {
+        if (token !== aiToken) return;
+        G.thinking = false;
+        if (!res) { render(); return; }
+        tryMove(res.mv, false);
+      }, wait);
+    });
+  }
+
+  function cancelAI() { aiToken++; G.thinking = false; G.busy = false; resetWorker(); }
+
+  // ---------- Nút chức năng ----------
+  function newGame(keepSettings) {
+    cancelAI();
+    if (!keepSettings) {
+      S.mode = $('selMode').value; S.human = +$('selSide').value; S.level = +$('selLevel').value;
+      S.flipped = S.mode === 'ai' && S.human === 1;
+    }
+    G = freshGame();
+    syncControls();
+    render();
+    saveGame();
+    maybeAI();
+  }
+
+  function undo() {
+    if (!G.moves.length) return;
+    cancelAI();
+    const popOne = () => { G.moves.pop(); G.notes.pop(); G.pos.pop(); G.keys.pop(); G.caps.pop(); };
+    G.over = null;
+    popOne();
+    if (S.mode === 'ai') while (turn() !== S.human && G.moves.length) popOne();
+    G.sel = null; G.hint = null; G.hintText = ''; G.anim = null; G.viewing = false;
+    render(); saveGame(); maybeAI();
+  }
+
+  async function hint() {
+    if (G.over || G.thinking || G.busy || !humanTurn()) return;
+    G.busy = true; G.hint = null; G.hintText = 'Đang nghĩ gợi ý…'; render();
+    const token = ++aiToken;
+    const res = await runSearch(cur(), turn(), { maxDepth: 6, timeMs: 1600, override: aiOverride() });
+    if (token !== aiToken) return;
+    G.busy = false;
+    if (res) {
+      G.hint = { from: res.mv & 127, to: res.mv >> 7 };
+      G.hintText = '💡 Gợi ý: ' + Eng.notate(cur(), res.mv);
+    } else G.hintText = '';
+    render();
+  }
+
+  async function offerDraw() {
+    if (G.over || G.thinking || G.busy || !humanTurn()) return;
+    if (S.mode === 'pvp') {
+      if (confirm(`${SIDE_SHORT[1 - turn()]} có đồng ý hòa không?`)) { finish(null, 'Hai bên thỏa thuận hòa.'); render(); saveGame(); }
+      return;
+    }
+    if (G.moves.length < 10) { toast('Mới đi ít nước quá, máy chưa đồng ý hòa. Hãy chơi thêm nhé!'); return; }
+    G.busy = true; G.hintText = 'Máy đang cân nhắc lời xin hòa…'; render();
+    const token = ++aiToken;
+    const res = await runSearch(cur(), 1 - S.human, { maxDepth: 4, timeMs: 900 });
+    if (token !== aiToken) return;
+    G.busy = false; G.hintText = '';
+    if (res && res.bestScore <= 60) { finish(null, 'Máy đồng ý hòa. Hai bên thỏa thuận hòa.'); }
+    else toast('Máy không đồng ý hòa – máy thấy mình đang có lợi. Hãy cố gắng nhé!');
+    render(); saveGame();
+  }
+
+  function resign() {
+    if (G.over) return;
+    const loser = S.mode === 'ai' ? S.human : turn();
+    if (!confirm(`${SIDE_NAME[loser]} xin thua?`)) return;
+    cancelAI();
+    finish(1 - loser, `${SIDE_NAME[loser]} xin thua. ${SIDE_NAME[1 - loser]} thắng.`);
+    render(); saveGame();
+  }
+
+  function flip() { S.flipped = !S.flipped; render(); saveSettings(); }
+
+  // ---------- Vẽ ----------
+  function pieceGroup(sq, p, x, y) {
+    const sd = p >> 3, ty = p & 7;
+    const g = el('g', { class: 'piece' }, gPieces);
+    g.style.transform = `translate(${x}px,${y}px)`;
+    el('circle', { cx: 1.5, cy: 3, r: 25, fill: 'rgba(40,20,0,.28)' }, g);
+    el('circle', { cx: 0, cy: 0, r: 25, fill: 'url(#pg)', stroke: '#6b4518', 'stroke-width': 2 }, g);
+    const col = sd === 0 ? '#c0281d' : '#1b1b1b';
+    el('circle', { cx: 0, cy: 0, r: 20.5, fill: 'none', stroke: col, 'stroke-width': 1.6 }, g);
+    const vi = S.pieceStyle === 'vi';
+    const label = glyph(sd, ty);
+    const t = el('text', { x: 0, y: vi ? 1 : 1.5, 'text-anchor': 'middle', 'dominant-baseline': 'central',
+      'font-size': vi ? (label.length > 4 ? 14.5 : 16) : 29, fill: col, class: vi ? 'vi' : '' }, g);
+    t.textContent = label;
+    return g;
+  }
+
+  function ring(parent, sq, r, color, w, extra) {
+    return el('circle', Object.assign({ cx: sqX(sq), cy: sqY(sq), r, fill: 'none', stroke: color, 'stroke-width': w }, extra || {}), parent);
+  }
+
+  function render() {
+    const b = cur();
+    const t = turn();
+    const st = stateOf(b);
+    G.legal = G.over ? [] : Eng.genLegal(st, t);
+    const chk = !G.over && Eng.inCheck(st, t);
+
+    // quân cờ
+    gPieces.textContent = '';
+    const animTo = G.anim ? G.anim.to : -1;
+    let animGroup = null, animFrom = null;
+    for (let sq = 0; sq < 90; sq++) {
+      const p = b[sq];
+      if (!p) continue;
+      if (sq === animTo) {
+        animFrom = G.anim.from;
+        animGroup = pieceGroup(sq, p, sqX(animFrom), sqY(animFrom));
+      } else pieceGroup(sq, p, sqX(sq), sqY(sq));
+    }
+    if (animGroup) {
+      void animGroup.getBoundingClientRect();
+      requestAnimationFrame(() => { animGroup.style.transform = `translate(${sqX(animTo)}px,${sqY(animTo)}px)`; });
+    }
+    G.anim = null;
+
+    // nền nhấn mạnh
+    gHl.textContent = '';
+    gMarks.textContent = '';
+    if (G.moves.length) {
+      const lm = G.moves[G.moves.length - 1];
+      ring(gHl, lm & 127, 26, '#2f6fde', 2.5, { 'stroke-dasharray': '5 4', opacity: .85 });
+      ring(gHl, lm >> 7, 29, '#2f6fde', 3.5, { opacity: .9 });
+    }
+    if (chk) {
+      const g = st.kp[t];
+      el('circle', { cx: sqX(g), cy: sqY(g), r: 40, fill: 'url(#glow)', class: 'checkglow' }, gHl);
+    }
+    if (G.sel !== null) {
+      ring(gMarks, G.sel, 30, '#e0a100', 4);
+      if (S.hints) {
+        for (const mv of G.legal) {
+          if ((mv & 127) !== G.sel) continue;
+          const to = mv >> 7;
+          if (b[to]) ring(gMarks, to, 28, '#d12d20', 4, { opacity: .9 });
+          else el('circle', { cx: sqX(to), cy: sqY(to), r: 8, fill: '#1f9b60', opacity: .85 }, gMarks);
+        }
+      }
+    }
+    if (G.hint) {
+      ring(gMarks, G.hint.from, 30, '#1f9b60', 4, { class: 'hintring' });
+      ring(gMarks, G.hint.to, 30, '#1f9b60', 4, { class: 'hintring' });
+    }
+
+    renderBars(st, chk);
+    renderStatus(chk);
+    renderMoves();
+    syncOverlay();
+    $('btnUndo').disabled = !G.moves.length;
+    $('btnHint').disabled = !!G.over || G.thinking || G.busy || !humanTurn();
+    $('btnDraw').disabled = !!G.over || G.thinking || G.busy || !humanTurn();
+    $('btnResign').disabled = !!G.over;
+  }
+
+  function capturedBy(side) {
+    const out = [];
+    G.caps.forEach((c, i) => { if (c && (i & 1) === side) out.push(c); });
+    out.sort((a, b) => (b & 7) - (a & 7));
+    return out;
+  }
+
+  function renderBars(st, chk) {
+    const bottomSide = S.flipped ? 1 : 0, topSide = 1 - bottomSide;
+    const fill = (id, side) => {
+      const bar = $(id);
+      const isAI = S.mode === 'ai' && side !== S.human;
+      const who = S.mode === 'pvp' ? 'Người chơi' : (isAI ? 'Máy' : 'Bạn');
+      const active = !G.over && turn() === side;
+      bar.className = 'pbar ' + (id === 'barTop' ? 'top' : 'bottom') + (active ? ' active' : '');
+      const think = isAI && G.thinking ? ' <span class="spinner" title="Đang nghĩ"></span>' : '';
+      const caps = capturedBy(side).map((c) => `<span class="${(c >> 3) === 0 ? 'w' : 'b'}${S.pieceStyle === 'vi' ? ' vi' : ''}" title="${PIECE_NAME[c & 7]}">${glyph(c >> 3, c & 7)}</span>`).join('');
+      const lvl = isAI ? ` · ${LEVELS[S.level].name}` : '';
+      bar.innerHTML = `<span class="dot ${side === 0 ? 'w' : 'b'}"></span><span class="nm">${who}</span><span class="tag">${SIDE_NAME[side]}${lvl}</span>${think}<span class="caps" aria-label="Quân đã ăn">${caps}</span>`;
+    };
+    fill('barTop', topSide);
+    fill('barBottom', bottomSide);
+  }
+
+  function renderStatus(chk) {
+    const s = $('status');
+    if (G.over) {
+      s.textContent = G.over.winner === null ? 'Ván cờ hòa' : `${SIDE_NAME[G.over.winner]} thắng`;
+    } else if (G.thinking) {
+      s.innerHTML = '<span class="spinner"></span> Máy đang suy nghĩ…';
+    } else {
+      const t = turn();
+      let txt = `Lượt đi: ${SIDE_NAME[t]}`;
+      if (S.mode === 'ai') txt = t === S.human ? `Đến lượt bạn (${SIDE_NAME[t]})` : `Lượt của máy (${SIDE_NAME[t]})`;
+      s.innerHTML = '';
+      s.appendChild(document.createTextNode(txt));
+      if (chk) { const bd = document.createElement('span'); bd.className = 'badge'; bd.textContent = 'CHIẾU TƯỚNG!'; s.appendChild(bd); }
+    }
+    $('hintText').textContent = G.hintText || '';
+  }
+
+  function renderMoves() {
+    const box = $('moves');
+    if (!G.notes.length) { box.innerHTML = '<div class="empty">Chưa có nước đi nào.</div>'; return; }
+    let h = '<table><thead><tr><th></th><th>Trắng</th><th>Đen</th></tr></thead><tbody>';
+    const last = G.notes.length - 1;
+    for (let i = 0; i < G.notes.length; i += 2) {
+      h += `<tr><td class="n">${i / 2 + 1}.</td><td${i === last ? ' class="cur"' : ''}>${G.notes[i]}</td><td${i + 1 === last ? ' class="cur"' : ''}>${G.notes[i + 1] || ''}</td></tr>`;
+    }
+    box.innerHTML = h + '</tbody></table>';
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function syncOverlay() {
+    const ov = $('overlay');
+    if (!G.over || G.viewing) { ov.hidden = true; return; }
+    ov.hidden = false;
+    let title;
+    if (G.over.winner === null) title = '🤝 Ván cờ hòa';
+    else if (S.mode === 'ai') title = G.over.winner === S.human ? '🎉 Bạn thắng!' : '😅 Máy thắng';
+    else title = `🎉 ${SIDE_NAME[G.over.winner]} thắng!`;
+    $('ovTitle').textContent = title;
+    $('ovText').textContent = G.over.text;
+  }
+
+  // ---------- Tương tác ----------
+  svg.addEventListener('click', (ev) => {
+    if (G.over || G.thinking || G.busy || !humanTurn()) return;
+    const sq = hitSquare(ev);
+    if (sq < 0) return;
+    const b = cur();
+    if (G.sel !== null) {
+      const mv = G.legal.find((m) => (m & 127) === G.sel && (m >> 7) === sq);
+      if (mv !== undefined) { tryMove(mv, true); return; }
+    }
+    const p = b[sq];
+    if (p && (p >> 3) === turn() && sq !== G.sel) {
+      if (!G.legal.some((m) => (m & 127) === sq)) toast('Quân này không có nước đi hợp lệ.');
+      G.sel = sq; G.hint = null; G.hintText = '';
+    } else G.sel = null;
+    render();
+  });
+
+  $('btnNew').addEventListener('click', () => newGame(false));
+  $('ovNew').addEventListener('click', () => newGame(false));
+  $('ovView').addEventListener('click', () => { G.viewing = true; render(); });
+  $('btnUndo').addEventListener('click', undo);
+  $('btnHint').addEventListener('click', hint);
+  $('btnDraw').addEventListener('click', offerDraw);
+  $('btnResign').addEventListener('click', resign);
+  $('btnFlip').addEventListener('click', flip);
+  $('btnRules').addEventListener('click', () => { const d = $('rulesDlg'); if (d.showModal) d.showModal(); else d.setAttribute('open', ''); });
+  $('rulesClose').addEventListener('click', () => $('rulesDlg').close());
+  $('rulesDlg').addEventListener('click', (e) => { if (e.target === $('rulesDlg')) $('rulesDlg').close(); });
+  $('chkHints').addEventListener('change', () => { S.hints = $('chkHints').checked; saveSettings(); render(); });
+  $('selStyle').addEventListener('change', () => { S.pieceStyle = $('selStyle').value === 'vi' ? 'vi' : 'han'; saveSettings(); render(); });
+  $('chkSound').addEventListener('change', () => { S.sound = $('chkSound').checked; saveSettings(); });
+  $('selMode').addEventListener('change', () => { $('selSide').disabled = $('selLevel').disabled = $('selMode').value === 'pvp'; });
+
+  function syncControls() {
+    $('selMode').value = S.mode; $('selSide').value = String(S.human); $('selLevel').value = String(S.level);
+    $('chkHints').checked = S.hints; $('chkSound').checked = S.sound; $('selStyle').value = S.pieceStyle;
+    $('selSide').disabled = $('selLevel').disabled = S.mode === 'pvp';
+  }
+
+  // ---------- Lưu / tải ----------
+  function saveSettings() { try { localStorage.setItem('cotuong.settings', JSON.stringify(S)); } catch (e) { /* */ } }
+  function saveGame() {
+    try {
+      localStorage.setItem('cotuong.settings', JSON.stringify(S));
+      localStorage.setItem('cotuong.game', JSON.stringify({ moves: G.moves, over: G.over }));
+    } catch (e) { /* */ }
+  }
+  function loadSaved() {
+    try {
+      const s = JSON.parse(localStorage.getItem('cotuong.settings') || 'null');
+      if (s) Object.assign(S, { mode: s.mode === 'pvp' ? 'pvp' : 'ai', human: s.human === 1 ? 1 : 0, level: Math.min(3, Math.max(0, s.level | 0)), hints: s.hints !== false, sound: s.sound !== false, flipped: !!s.flipped, pieceStyle: s.pieceStyle === 'vi' ? 'vi' : 'han' });
+      const g = JSON.parse(localStorage.getItem('cotuong.game') || 'null');
+      if (g && Array.isArray(g.moves) && g.moves.length) {
+        const game = freshGame();
+        G = game;
+        for (const mv of g.moves) {
+          const legal = Eng.genLegal(stateOf(cur()), turn());
+          if (!legal.includes(mv)) throw new Error('ván lưu không hợp lệ');
+          applyRaw(mv);
+        }
+        if (g.over) G.over = g.over;
+        return true;
+      }
+    } catch (e) { G = null; }
+    return false;
+  }
+
+  // ---------- PWA: chơi offline sau lần mở đầu tiên ----------
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+    window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(() => { /* bỏ qua */ }); });
+  }
+
+  // ---------- Khởi động ----------
+  if (!loadSaved()) {
+    G = freshGame();
+    if (S.mode === 'ai' && S.human === 1) S.flipped = true;
+  }
+  syncControls();
+  render();
+  if (!G.over) maybeAI();
+  window.__cotuong = { Eng, get G() { return G; }, S, tryMove, render, newGame, geom: { CELL, M, BW, BH } }; // phục vụ kiểm thử
+})();
+
+</script>
+</body>
+</html>
