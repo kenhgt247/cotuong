@@ -326,6 +326,21 @@ label.lbl { display: block; }
 .offline-btn { background: linear-gradient(#d8362a, var(--accent-d)) !important; border-color: #7d1a14 !important; color: #fff !important; }
 .sheet-body .grid2 .wide-btn { width: auto; }
 
+/* ===== Máy tính: bàn cờ to hơn, thanh nút chuyển sang cột bên phải ===== */
+@media (min-width: 901px) {
+  :root { --stagew: min(100%, max(400px, calc((100vh - 232px) * .9079))); }
+  #app { padding-top: 10px; padding-bottom: 12px; }
+  .appbar { margin-bottom: 8px; }
+  main { grid-template-columns: minmax(0, 700px) minmax(320px, 1fr); grid-template-areas: "stage bars" "stage side"; grid-template-rows: auto 1fr; column-gap: 22px; row-gap: 12px; }
+  #boardWrap { display: contents; }
+  .stage { grid-area: stage; align-self: start; justify-self: center; margin: 0; }
+  #actionbar, #viewbar, #onlinebar, #puzzlebar { grid-area: bars; width: auto; margin: 0; align-self: start; }
+  #actionbar button, .subbar button { flex-direction: row; justify-content: center; gap: 5px; font-size: .84rem; padding: 11px 3px; white-space: nowrap; min-height: 0; }
+  #actionbar button i, .subbar button i { font-size: 1.1rem; }
+  .stage { position: sticky; top: 10px; }
+  aside { grid-area: side; align-self: start; }
+}
+
 </style>
 </head>
 <body>
