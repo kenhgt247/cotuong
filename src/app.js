@@ -1411,12 +1411,14 @@
       syncOlOpts(); showOlTab(olTab);
     }
     openDlg($('onlineDlg'));
+    if (NET.enabled) olStartPolling();
   }
   function showOlTab(t) {
     olTab = t;
     ['Quick', 'Create', 'Join', 'Board'].forEach((n) => { $('olPanel' + n).hidden = n.toLowerCase() !== t; });
     $('olTabs').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
     if (t === 'board') loadBoard();
+    if (typeof renderPresence === 'function') { if (olPres) renderPresence(); else updateEmpty(); }
     if (t === 'join') setTimeout(() => $('olCode').focus(), 50);
   }
   function syncOlOpts() {
@@ -1434,6 +1436,47 @@
   $('olCreateBtn').addEventListener('click', createCode);
   $('olQuickBtn').addEventListener('click', quickStart);
   $('olQuickCancel').addEventListener('click', () => quickStop());
+
+  // ----- Số người online / đang chờ ghép -----
+  const QUICK_HINT_MS = window.__QUICK_HINT_MS || 20000;
+  let olPoll = 0, olBeatT = 0, olPres = null;
+  function olStartPolling() {
+    olStopPolling();
+    olPres = null;
+    const tick = async () => {
+      try { olPres = await NET.presence(); renderPresence(); }
+      catch (e) { $('olPresence').innerHTML = '<span class="pill">Chưa tải được số người online</span>'; }
+    };
+    NET.syncClock().catch(() => {}).then(() => { NET.heartbeat().catch(() => {}); tick(); });
+    olPoll = setInterval(tick, 5000);
+    olBeatT = setInterval(() => NET.heartbeat().catch(() => {}), 15000);
+  }
+  function olStopPolling() { clearInterval(olPoll); clearInterval(olBeatT); olPoll = olBeatT = 0; }
+  $('onlineDlg').addEventListener('close', olStopPolling);
+  function renderPresence() {
+    const p = olPres;
+    if (!p) return;
+    const others = Math.max(0, p.online - 1);
+    $('olPresence').innerHTML = `<span class="pill on">🟢 ${p.online} người đang online</span><span class="pill wait">⏳ ${p.waiting} người đang chờ ghép</span>`;
+    if (!Q) {
+      $('olQuickInfo').textContent = p.waiting > 0
+        ? `Có ${p.waiting} người đang chờ. Bấm “Tìm đối thủ” để vào chơi ngay!`
+        : (others > 0 ? 'Có người đang online nhưng chưa ai chờ ghép. Bạn bấm “Tìm đối thủ” để chờ nhé.' : 'Máy chủ sẽ tìm một đối thủ đang chờ. Hai bạn chọn quân ngẫu nhiên.');
+    }
+    updateEmpty();
+  }
+  function updateEmpty() {
+    const p = olPres;
+    const searching = !!Q;
+    const longWait = searching && Date.now() - Q.t0 > QUICK_HINT_MS;
+    const none = !!p && p.waiting === 0 && !searching;
+    $('olEmpty').hidden = !(olTab === 'quick' && (none || longWait));
+    $('olEmptyText').innerHTML = searching
+      ? '<b>Chưa tìm thấy đối thủ.</b><br>Trong lúc chờ, bạn có thể mời bạn bè cùng chơi hoặc chơi offline với máy.'
+      : '<b>Hiện chưa có ai khác đang chờ ghép.</b><br>Bạn có thể mời bạn bè cùng chơi, hoặc chơi offline với máy trong lúc chờ.';
+  }
+  $('olInvite').addEventListener('click', async () => { if (Q) await quickStop(); showOlTab('create'); });
+  $('olGoOffline').addEventListener('click', async () => { if (Q) await quickStop(); closeDlg($('onlineDlg')); openOffline('ai'); });
 
   async function loadBoard() {
     const box = $('olBoardList');
@@ -1467,7 +1510,8 @@
     if (!Q || Q.busy || Q.done) return;
     Q.busy = true;
     try {
-      $('olQuickSec').textContent = Math.round((Date.now() - Q.t0) / 1000) + ' giây';
+      $('olQuickSec').textContent = Math.round((Date.now() - Q.t0) / 1000) + ' giây' + (olPres ? ` · ${olPres.waiting} người đang chờ` : '');
+      updateEmpty();
       if (Date.now() - Q.beat > 12000) { Q.beat = Date.now(); await NET.queueJoin(olInfo()); }
       const list = await NET.queueScan();
       const now = NET.serverNow();
@@ -1484,6 +1528,7 @@
   async function quickStop() {
     const q = Q; Q = null;
     $('olQuickBtn').hidden = false; $('olQuickWait').hidden = true;
+    updateEmpty();
     if (!q) return;
     clearInterval(q.timer); if (q.stream) q.stream.close();
     try { await NET.queueLeave(); } catch (e) { /* */ }

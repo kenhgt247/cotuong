@@ -37,6 +37,8 @@ R(null, '/users', false, 'người chưa đăng nhập không đọc được');
 W(A, '/seen/A', SV, true, 'ghi giờ máy chủ cho mình');
 W(A, '/seen/A', 123, false, 'không tự ghi giờ giả');
 W(B, '/seen/A', SV, false, 'không ghi hộ người khác');
+R(B, '/seen', true, 'người đăng nhập đọc được danh sách đang online');
+R(null, '/seen', false, 'người chưa đăng nhập không đọc được danh sách online');
 
 // ---- tạo phòng ----
 const room = (uid, slot) => ({ [slot]: uid, clock: 10, created: SV, n: 0, mvs: '', info: { [uid]: info('Nam') } });

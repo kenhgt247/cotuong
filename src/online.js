@@ -199,11 +199,20 @@ function createNet(config) {
   }
   async function claim(targetUid, room) { const uid = (await ensureAuth()).uid; await put(`claims/${targetUid}`, { by: uid, room, t: SV }); }
 
+  /** Số người đang online (có nhịp tim trong 90 giây) và số người đang chờ ghép (không tính mình). */
+  async function presence() {
+    const me = (await ensureAuth()).uid;
+    const now = serverNow();
+    const [q, seen] = await Promise.all([queueScan(), get('seen', 'orderBy="$value"&startAt=' + Math.floor(now - 90000))]);
+    const online = Object.keys(seen || {}).length;
+    const waiting = q.filter((e) => e.uid !== me && now - e.ts < 40000).length;
+    return { online: Math.max(online, 1), waiting };
+  }
   async function heartbeat() { const uid = (await ensureAuth()).uid; await put(`seen/${uid}`, SV); }
   async function uid() { return (await ensureAuth()).uid; }
 
   return {
-    enabled, uid, ensureAuth, get, put, patch, del, stream, syncClock, serverNow, heartbeat,
+    enabled, uid, ensureAuth, get, put, patch, del, stream, syncClock, serverNow, heartbeat, presence,
     saveUser, leaderboard, createRoom, joinRoom, sendMove, sendResult, sendOffer, clearOffer, sendChat,
     queueJoin, queueLeave, queueScan, claim, cleanCode, setAt, patchAt,
   };

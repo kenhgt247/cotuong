@@ -28,7 +28,9 @@ function startMock(port = 0) {
   function query(val, q) {
     const ob = q.get('orderBy'); if (!ob || !val || typeof val !== 'object') return val;
     const key = JSON.parse(ob);
-    let ents = Object.entries(val).filter(([, v]) => v && typeof v === 'object' && key in v).sort((a, b) => (a[1][key] > b[1][key] ? 1 : a[1][key] < b[1][key] ? -1 : 0));
+    const get = (v) => (key === '$value' ? v : v[key]);
+    let ents = Object.entries(val).filter(([, v]) => (key === '$value' ? v !== null && typeof v !== 'object' : v && typeof v === 'object' && key in v)).sort((a, b) => (get(a[1]) > get(b[1]) ? 1 : get(a[1]) < get(b[1]) ? -1 : 0));
+    if (q.get('startAt')) ents = ents.filter(([, v]) => get(v) >= +q.get('startAt'));
     if (q.get('limitToFirst')) ents = ents.slice(0, +q.get('limitToFirst'));
     if (q.get('limitToLast')) ents = ents.slice(-+q.get('limitToLast'));
     return Object.fromEntries(ents);

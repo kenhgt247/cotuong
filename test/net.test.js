@@ -28,6 +28,18 @@ global.self = global;
   const lb = await B.net.leaderboard();
   ok(lb.length === 2 && lb[0].nick === 'Bạn', 'bảng xếp hạng sắp theo điểm: ' + lb.map((x) => x.nick + ':' + x.rating).join(', '));
 
+  // số người online / đang chờ
+  swap(A); await A.net.syncClock(); await A.net.heartbeat();
+  swap(B); await B.net.syncClock(); await B.net.heartbeat();
+  swap(A); let pr = await A.net.presence();
+  ok(pr.online === 2 && pr.waiting === 0, 'đếm 2 người online, 0 người chờ: ' + JSON.stringify(pr));
+  swap(B); await B.net.queueJoin({ nick: 'Bạn', avatar: '🐯', rating: 1300 });
+  swap(A); pr = await A.net.presence();
+  ok(pr.waiting === 1, 'A thấy 1 người đang chờ ghép: ' + JSON.stringify(pr));
+  swap(B); pr = await B.net.presence();
+  ok(pr.waiting === 0, 'B không tự đếm mình là người chờ');
+  swap(B); await B.net.queueLeave();
+
   // phòng chơi + luồng sự kiện
   swap(A); const code = await A.net.createRoom({ side: 0, clock: 10, info: { nick: 'Nam', avatar: '🐲', rating: 1100 } });
   ok(/^[A-Z0-9]{6}$/.test(code), 'tạo phòng, mã ' + code);

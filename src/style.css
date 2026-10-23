@@ -324,3 +324,12 @@ label.lbl { display: block; }
   .stage { position: sticky; top: 10px; }
   aside { grid-area: side; align-self: start; }
 }
+
+/* ===== Số người online / phòng chờ ===== */
+.presence { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 4px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: #fff; border: 1px solid var(--line); font-weight: 700; font-size: .9rem; }
+.pill.on { background: #effaf3; border-color: #9fd8b5; color: #1a6b43; }
+.pill.wait { background: #fff4d3; border-color: #e0b94a; }
+.emptybox { margin-top: 14px; padding: 12px 14px; border-radius: 14px; background: #fff4d3; border: 2px dashed #e0b94a; }
+.emptybox p { margin: 0 0 10px; line-height: 1.45; }
+.emptybox .row2 { margin-top: 0; }

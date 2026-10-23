@@ -341,6 +341,15 @@ label.lbl { display: block; }
   aside { grid-area: side; align-self: start; }
 }
 
+/* ===== Số người online / phòng chờ ===== */
+.presence { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 4px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: #fff; border: 1px solid var(--line); font-weight: 700; font-size: .9rem; }
+.pill.on { background: #effaf3; border-color: #9fd8b5; color: #1a6b43; }
+.pill.wait { background: #fff4d3; border-color: #e0b94a; }
+.emptybox { margin-top: 14px; padding: 12px 14px; border-radius: 14px; background: #fff4d3; border: 2px dashed #e0b94a; }
+.emptybox p { margin: 0 0 10px; line-height: 1.45; }
+.emptybox .row2 { margin-top: 0; }
+
 </style>
 </head>
 <body>
@@ -533,12 +542,17 @@ label.lbl { display: block; }
         <button type="button" data-tab="board">🏆<small>Xếp hạng</small></button>
       </div>
       <p class="muted" id="olWho"></p>
+      <div id="olPresence" class="presence"><span class="pill">Đang tải số người online…</span></div>
       <div id="olPanelQuick" class="olpanel">
-        <p class="muted">Máy chủ sẽ tìm một đối thủ đang chờ. Hai bạn chọn quân ngẫu nhiên.</p>
+        <p class="muted" id="olQuickInfo">Máy chủ sẽ tìm một đối thủ đang chờ. Hai bạn chọn quân ngẫu nhiên.</p>
         <div class="field"><div class="lbl">Đồng hồ mỗi bên</div>
           <div class="seg four" data-ol="clockQ"><button type="button" data-v="0">Không</button><button type="button" data-v="5">5′</button><button type="button" data-v="10">10′</button><button type="button" data-v="15">15′</button></div></div>
         <button id="olQuickBtn" class="primary big" type="button">⚡ Tìm đối thủ</button>
         <div id="olQuickWait" hidden><p><span class="spinner dark"></span> Đang tìm đối thủ… <span id="olQuickSec"></span></p><button id="olQuickCancel" type="button">Hủy tìm</button></div>
+        <div id="olEmpty" class="emptybox" hidden>
+          <p id="olEmptyText"><b>Hiện chưa có ai khác đang chờ ghép.</b><br>Bạn có thể mời bạn bè cùng chơi, hoặc chơi offline với máy trong lúc chờ.</p>
+          <div class="row2"><button id="olInvite" type="button">📨 Mời bạn bè</button><button id="olGoOffline" type="button" class="offline-btn">🤖 Chơi offline</button></div>
+        </div>
       </div>
       <div id="olPanelCreate" class="olpanel" hidden>
         <div class="field"><div class="lbl">Bạn cầm quân</div>
@@ -1557,11 +1571,20 @@ function createNet(config) {
   }
   async function claim(targetUid, room) { const uid = (await ensureAuth()).uid; await put(`claims/${targetUid}`, { by: uid, room, t: SV }); }
 
+  /** Số người đang online (có nhịp tim trong 90 giây) và số người đang chờ ghép (không tính mình). */
+  async function presence() {
+    const me = (await ensureAuth()).uid;
+    const now = serverNow();
+    const [q, seen] = await Promise.all([queueScan(), get('seen', 'orderBy="$value"&startAt=' + Math.floor(now - 90000))]);
+    const online = Object.keys(seen || {}).length;
+    const waiting = q.filter((e) => e.uid !== me && now - e.ts < 40000).length;
+    return { online: Math.max(online, 1), waiting };
+  }
   async function heartbeat() { const uid = (await ensureAuth()).uid; await put(`seen/${uid}`, SV); }
   async function uid() { return (await ensureAuth()).uid; }
 
   return {
-    enabled, uid, ensureAuth, get, put, patch, del, stream, syncClock, serverNow, heartbeat,
+    enabled, uid, ensureAuth, get, put, patch, del, stream, syncClock, serverNow, heartbeat, presence,
     saveUser, leaderboard, createRoom, joinRoom, sendMove, sendResult, sendOffer, clearOffer, sendChat,
     queueJoin, queueLeave, queueScan, claim, cleanCode, setAt, patchAt,
   };
@@ -2983,12 +3006,14 @@ function createNet(config) {
       syncOlOpts(); showOlTab(olTab);
     }
     openDlg($('onlineDlg'));
+    if (NET.enabled) olStartPolling();
   }
   function showOlTab(t) {
     olTab = t;
     ['Quick', 'Create', 'Join', 'Board'].forEach((n) => { $('olPanel' + n).hidden = n.toLowerCase() !== t; });
     $('olTabs').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
     if (t === 'board') loadBoard();
+    if (typeof renderPresence === 'function') { if (olPres) renderPresence(); else updateEmpty(); }
     if (t === 'join') setTimeout(() => $('olCode').focus(), 50);
   }
   function syncOlOpts() {
@@ -3006,6 +3031,47 @@ function createNet(config) {
   $('olCreateBtn').addEventListener('click', createCode);
   $('olQuickBtn').addEventListener('click', quickStart);
   $('olQuickCancel').addEventListener('click', () => quickStop());
+
+  // ----- Số người online / đang chờ ghép -----
+  const QUICK_HINT_MS = window.__QUICK_HINT_MS || 20000;
+  let olPoll = 0, olBeatT = 0, olPres = null;
+  function olStartPolling() {
+    olStopPolling();
+    olPres = null;
+    const tick = async () => {
+      try { olPres = await NET.presence(); renderPresence(); }
+      catch (e) { $('olPresence').innerHTML = '<span class="pill">Chưa tải được số người online</span>'; }
+    };
+    NET.syncClock().catch(() => {}).then(() => { NET.heartbeat().catch(() => {}); tick(); });
+    olPoll = setInterval(tick, 5000);
+    olBeatT = setInterval(() => NET.heartbeat().catch(() => {}), 15000);
+  }
+  function olStopPolling() { clearInterval(olPoll); clearInterval(olBeatT); olPoll = olBeatT = 0; }
+  $('onlineDlg').addEventListener('close', olStopPolling);
+  function renderPresence() {
+    const p = olPres;
+    if (!p) return;
+    const others = Math.max(0, p.online - 1);
+    $('olPresence').innerHTML = `<span class="pill on">🟢 ${p.online} người đang online</span><span class="pill wait">⏳ ${p.waiting} người đang chờ ghép</span>`;
+    if (!Q) {
+      $('olQuickInfo').textContent = p.waiting > 0
+        ? `Có ${p.waiting} người đang chờ. Bấm “Tìm đối thủ” để vào chơi ngay!`
+        : (others > 0 ? 'Có người đang online nhưng chưa ai chờ ghép. Bạn bấm “Tìm đối thủ” để chờ nhé.' : 'Máy chủ sẽ tìm một đối thủ đang chờ. Hai bạn chọn quân ngẫu nhiên.');
+    }
+    updateEmpty();
+  }
+  function updateEmpty() {
+    const p = olPres;
+    const searching = !!Q;
+    const longWait = searching && Date.now() - Q.t0 > QUICK_HINT_MS;
+    const none = !!p && p.waiting === 0 && !searching;
+    $('olEmpty').hidden = !(olTab === 'quick' && (none || longWait));
+    $('olEmptyText').innerHTML = searching
+      ? '<b>Chưa tìm thấy đối thủ.</b><br>Trong lúc chờ, bạn có thể mời bạn bè cùng chơi hoặc chơi offline với máy.'
+      : '<b>Hiện chưa có ai khác đang chờ ghép.</b><br>Bạn có thể mời bạn bè cùng chơi, hoặc chơi offline với máy trong lúc chờ.';
+  }
+  $('olInvite').addEventListener('click', async () => { if (Q) await quickStop(); showOlTab('create'); });
+  $('olGoOffline').addEventListener('click', async () => { if (Q) await quickStop(); closeDlg($('onlineDlg')); openOffline('ai'); });
 
   async function loadBoard() {
     const box = $('olBoardList');
@@ -3039,7 +3105,8 @@ function createNet(config) {
     if (!Q || Q.busy || Q.done) return;
     Q.busy = true;
     try {
-      $('olQuickSec').textContent = Math.round((Date.now() - Q.t0) / 1000) + ' giây';
+      $('olQuickSec').textContent = Math.round((Date.now() - Q.t0) / 1000) + ' giây' + (olPres ? ` · ${olPres.waiting} người đang chờ` : '');
+      updateEmpty();
       if (Date.now() - Q.beat > 12000) { Q.beat = Date.now(); await NET.queueJoin(olInfo()); }
       const list = await NET.queueScan();
       const now = NET.serverNow();
@@ -3056,6 +3123,7 @@ function createNet(config) {
   async function quickStop() {
     const q = Q; Q = null;
     $('olQuickBtn').hidden = false; $('olQuickWait').hidden = true;
+    updateEmpty();
     if (!q) return;
     clearInterval(q.timer); if (q.stream) q.stream.close();
     try { await NET.queueLeave(); } catch (e) { /* */ }
