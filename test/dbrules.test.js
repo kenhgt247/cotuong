@@ -91,6 +91,13 @@ W(B, '/rooms/ABC234/result', { w: 0, text: 'Đen xin thua.', by: 'B', t: SV }, t
 W(A, '/rooms/ABC234/result', { w: 1, text: 'đổi ý', by: 'A', t: SV }, false, 'kết quả chỉ ghi được một lần');
 U(B, '/rooms/ABC234', mv(4, '100,200,16383,5'), false, 'hết ván thì không đi tiếp được');
 
+// ---- giờ cao điểm ----
+W(A, '/activity/20/A', SV, true, 'ghi dấu có mặt ở khung giờ 20h');
+W(A, '/activity/25/A', SV, false, 'giờ không hợp lệ bị từ chối');
+W(B, '/activity/20/A', SV, false, 'không ghi hộ người khác');
+W(A, '/activity/21/A', 5, false, 'không ghi giờ giả');
+R(B, '/activity', true, 'đọc được thống kê giờ');
+
 // ---- ghép nhanh ----
 W(A, '/queue/A', Object.assign({ ts: SV }, info('Nam')), true, 'vào hàng chờ ghép nhanh');
 W(B, '/queue/A', Object.assign({ ts: SV }, info('Giả')), false, 'không sửa hàng chờ của người khác');

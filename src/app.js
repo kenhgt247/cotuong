@@ -29,7 +29,7 @@
 
   // ---------- Trạng thái ----------
   // S: cài đặt dùng chung. G: ván đang hiển thị (ván thật, xem lại hoặc bài tập). stash: ván thật khi đang xem lại/làm bài tập.
-  const S = { mode: 'ai', human: 0, level: 1, clock: 0, hints: true, sound: true, vibe: true, flipped: false, pieceStyle: 'han' };
+  const S = { mode: 'ai', human: 0, level: 1, clock: 0, hints: true, sound: true, vibe: true, flipped: false, pieceStyle: 'han', alerts: true };
   let G = null, stash = null;
   let aiToken = 0;
 
@@ -1156,7 +1156,7 @@
     if (wait) {
       $('ovTitle').textContent = '⏳ Chờ đối thủ…';
       $('ovText').innerHTML = 'Gửi mã hoặc link này cho bạn bè:<div class="roomcode">' + G.online.code + '</div>';
-      btns.innerHTML = '<button class="primary" data-ov="share" type="button">📤 Chia sẻ</button><button data-ov="copy" type="button">📋 Sao chép link</button><button data-ov="cancelroom" type="button">Hủy phòng</button>';
+      btns.innerHTML = '<button class="primary" data-ov="share" type="button">📤 Mời qua Zalo, Messenger…</button><button data-ov="fb" type="button">Facebook</button><button data-ov="copy" type="button">📋 Sao chép lời mời</button><button data-ov="cancelroom" type="button">Hủy phòng</button>';
     } else if (puz) {
       const P = G.puzzle;
       $('ovTitle').textContent = '🎉 Giải đúng!';
@@ -1189,6 +1189,7 @@
     else if (a === 'exit' || a === 'cancelroom') olExit();
     else if (a === 'copy') olCopyLink();
     else if (a === 'share') olShare();
+    else if (a === 'fb') olFacebook();
   });
 
   // ---------- Tương tác: bấm và kéo thả ----------
@@ -1312,6 +1313,7 @@
   document.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => closeDlg(b.closest('dialog'))));
   $('chkHints').addEventListener('change', () => { S.hints = $('chkHints').checked; saveSettings(); renderHighlights(); });
   $('chkSound').addEventListener('change', () => { S.sound = $('chkSound').checked; saveSettings(); });
+  $('chkAlerts').addEventListener('change', () => { S.alerts = $('chkAlerts').checked; saveSettings(); if (!S.alerts) hideBanner(); presEnsure(); });
   $('chkVibe').addEventListener('change', () => { S.vibe = $('chkVibe').checked; saveSettings(); buzz(30); });
   $('selStyle').addEventListener('change', () => { S.pieceStyle = $('selStyle').value === 'vi' ? 'vi' : 'han'; saveSettings(); render(); });
   window.addEventListener('keydown', (e) => {
@@ -1340,7 +1342,7 @@
 
   function syncControls() {
     $('chkHints').checked = S.hints; $('chkSound').checked = S.sound; $('chkVibe').checked = S.vibe;
-    $('selStyle').value = S.pieceStyle;
+    $('selStyle').value = S.pieceStyle; $('chkAlerts').checked = S.alerts;
   }
 
   // ---------- Lưu / tải ----------
@@ -1359,7 +1361,7 @@
         mode: s.mode === 'pvp' ? 'pvp' : 'ai', human: s.human === 1 ? 1 : 0, level: Math.min(3, Math.max(0, s.level | 0)),
         clock: [0, 5, 10, 15, 30].includes(s.clock) ? s.clock : 0,
         hints: s.hints !== false, sound: s.sound !== false, vibe: s.vibe !== false, flipped: !!s.flipped,
-        pieceStyle: s.pieceStyle === 'vi' ? 'vi' : 'han',
+        pieceStyle: s.pieceStyle === 'vi' ? 'vi' : 'han', alerts: s.alerts !== false,
       });
       const g = JSON.parse(localStorage.getItem('cotuong.game') || 'null');
       if (g && Array.isArray(g.moves) && g.moves.length) {
@@ -1410,8 +1412,10 @@
       $('olWho').textContent = PF.nick ? `Bạn sẽ hiện là “${PF.nick}” · ${PF.online.rating} điểm online` : 'Bạn chưa đặt biệt danh. Bấm vào tên ở góc trên để đặt.';
       syncOlOpts(); showOlTab(olTab);
     }
+    if (Q) Q.bg = false;
     openDlg($('onlineDlg'));
-    if (NET.enabled) olStartPolling();
+    presEnsure();
+    loadPeak();
   }
   function showOlTab(t) {
     olTab = t;
@@ -1439,24 +1443,122 @@
 
   // ----- Số người online / đang chờ ghép -----
   const QUICK_HINT_MS = window.__QUICK_HINT_MS || 20000;
-  let olPoll = 0, olBeatT = 0, olPres = null;
-  function olStartPolling() {
-    olStopPolling();
-    olPres = null;
-    const tick = async () => {
-      try { olPres = await NET.presence(); renderPresence(); }
-      catch (e) { $('olPresence').innerHTML = '<span class="pill">Chưa tải được số người online</span>'; }
-    };
-    NET.syncClock().catch(() => {}).then(() => { NET.heartbeat().catch(() => {}); tick(); });
-    olPoll = setInterval(tick, 5000);
-    olBeatT = setInterval(() => NET.heartbeat().catch(() => {}), 15000);
+  const QUICK_BG_MS = window.__QUICK_BG_MS || 60000;
+  const WATCH_MS = window.__WATCH_MS || 20000;
+  let olPres = null, presTimer = 0, presMs = 0, beatTimer = 0, presSynced = false, prevWaiting = null, lastBanner = 0;
+  let presFails = 0, presSkip = 0;
+  async function presTick() {
+    if (!NET.enabled || document.hidden) return;
+    if (presFails > 2 && (presSkip++ % 6)) return; // mất mạng: thử thưa dần
+    try {
+      if (!presSynced) { presSynced = true; await NET.syncClock().catch(() => {}); }
+      olPres = await NET.presence();
+      presFails = 0;
+      renderPresence();
+      watchAlert();
+      maybeMarkActive();
+    } catch (e) {
+      presFails++;
+      olPres = null;
+      if ($('onlineDlg').open) $('olPresence').innerHTML = '<span class="pill">Chưa tải được số người online</span>';
+      $('homePresence').textContent = '';
+    }
   }
-  function olStopPolling() { clearInterval(olPoll); clearInterval(olBeatT); olPoll = olBeatT = 0; }
-  $('onlineDlg').addEventListener('close', olStopPolling);
+  // Chạy nhanh (5 giây) khi đang xem màn hình chọn / phần online / đang tìm; chạy chậm khi chỉ "canh" người chờ ghép.
+  function presEnsure() {
+    const fast = $('onlineDlg').open || $('homeDlg').open || !!Q;
+    const watch = S.alerts && !(G && G.online);
+    const want = NET.enabled && (fast || watch);
+    const ms = fast ? 5000 : WATCH_MS;
+    if (!want) { clearInterval(presTimer); clearInterval(beatTimer); presTimer = beatTimer = 0; presMs = 0; return; }
+    if (presTimer && presMs === ms) return;
+    clearInterval(presTimer); clearInterval(beatTimer);
+    presMs = ms;
+    presTimer = setInterval(presTick, ms);
+    beatTimer = setInterval(() => { if (!document.hidden) NET.heartbeat().catch(() => {}); }, 15000);
+    NET.heartbeat().catch(() => {});
+    presTick();
+  }
+  setInterval(presEnsure, 2500);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { presEnsure(); presTick(); } });
+  $('homeDlg').addEventListener('toggle', presEnsure);
+
+  // ----- Giờ cao điểm -----
+  /** Tìm khung 2 giờ liên tiếp đông người nhất. Cần ít nhất 3 lượt người có mặt mới kết luận. */
+  function peakSummary(counts) {
+    const total = counts.reduce((x, y) => x + y, 0);
+    if (total < 3) return null;
+    let best = 0, bestSum = -1;
+    for (let h = 0; h < 24; h++) { const s2 = counts[h] + counts[(h + 1) % 24]; if (s2 > bestSum) { bestSum = s2; best = h; } }
+    return { start: best, end: (best + 2) % 24, text: `${best}h–${(best + 2) % 24}h`, max: Math.max(...counts) };
+  }
+  let peakInfo = null, peakAt = 0, markedKey = '';
+  async function loadPeak() {
+    if (!NET.enabled || Date.now() - peakAt < 20 * 60000) { renderPeak(); return; }
+    try {
+      const counts = await NET.peakHours();
+      peakAt = Date.now();
+      peakInfo = { counts, sum: peakSummary(counts) };
+    } catch (e) { /* bỏ qua */ }
+    renderPeak();
+  }
+  function renderPeak() {
+    const box = $('olPeak');
+    if (!peakInfo || !peakInfo.sum) { box.hidden = true; return; }
+    const { counts, sum } = peakInfo, now = NET.vnHour();
+    box.hidden = false;
+    $('olPeakBars').innerHTML = counts.map((v, h) => `<i class="${h === sum.start || h === (sum.start + 1) % 24 ? 'top' : ''}${h === now ? ' now' : ''}" style="height:${Math.max(6, Math.round((v / Math.max(1, sum.max)) * 100))}%" title="${h}h: ${v} người"></i>`).join('');
+    $('olPeakText').textContent = `Thường đông người nhất lúc ${sum.text} (giờ Việt Nam). Hẹn bạn bè vào khung giờ này để dễ có đối thủ nhé!`;
+    updateEmpty();
+  }
+  /** Mỗi người chỉ ghi một dấu có mặt cho mỗi giờ trong ngày. */
+  async function maybeMarkActive() {
+    if (!NET.enabled) return;
+    const d = new Date(NET.serverNow() + 7 * 3600000);
+    const key = `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}-${d.getUTCHours()}`;
+    if (markedKey === key) return;
+    let saved = ''; try { saved = localStorage.getItem('cotuong.act') || ''; } catch (e) { /* */ }
+    if (saved === key) { markedKey = key; return; }
+    try { await NET.markActive(); markedKey = key; try { localStorage.setItem('cotuong.act', key); } catch (e) { /* */ } } catch (e) { /* thử lại ở lần sau */ }
+  }
+
+  // ----- Thông báo có người chờ ghép -----
+  let bannerTimer = 0, bannerFn = null;
+  function showBanner(text, label, fn) {
+    $('bnText').textContent = text; $('bnGo').textContent = label; bannerFn = fn;
+    $('banner').hidden = false;
+    clearTimeout(bannerTimer); bannerTimer = setTimeout(hideBanner, 14000);
+  }
+  function hideBanner() { $('banner').hidden = true; clearTimeout(bannerTimer); }
+  $('bnX').addEventListener('click', hideBanner);
+  $('bnGo').addEventListener('click', () => { const f = bannerFn; hideBanner(); if (f) f(); });
+  function watchAlert() {
+    const p = olPres; if (!p) return;
+    const was = prevWaiting; prevWaiting = p.waiting;
+    if (!S.alerts || Q || (G && G.online) || $('onlineDlg').open || anyDialogOpen()) return;
+    if (p.waiting >= 1 && (was === null || was === 0) && Date.now() - lastBanner > 45000) {
+      lastBanner = Date.now();
+      showBanner(`🔔 Có ${p.waiting} người đang chờ chơi online!`, 'Vào chơi', openOnlineQuick);
+      SND.check(); buzz([30, 40, 30]);
+    }
+  }
+  function openOnlineQuick() {
+    hideBanner();
+    if (G && G.online && !G.over) return;
+    closeDlg($('homeDlg'));
+    openOnline(); showOlTab('quick'); quickStart();
+  }
+  // ----- Tìm đối thủ chạy nền -----
+  function updateBgPill() { $('bgPill').hidden = !(Q && !$('onlineDlg').open); }
+  setInterval(updateBgPill, 700);
+  $('bgCancel').addEventListener('click', () => { quickStop(); toast('Đã dừng tìm đối thủ.'); });
+  $('onlineDlg').addEventListener('close', () => { if (Q) Q.bg = true; updateBgPill(); updateEmpty(); });
+
   function renderPresence() {
     const p = olPres;
     if (!p) return;
     const others = Math.max(0, p.online - 1);
+    $('homePresence').textContent = `🟢 ${p.online} người online · ⏳ ${p.waiting} đang chờ ghép`;
     $('olPresence').innerHTML = `<span class="pill on">🟢 ${p.online} người đang online</span><span class="pill wait">⏳ ${p.waiting} người đang chờ ghép</span>`;
     if (!Q) {
       $('olQuickInfo').textContent = p.waiting > 0
@@ -1471,9 +1573,10 @@
     const longWait = searching && Date.now() - Q.t0 > QUICK_HINT_MS;
     const none = !!p && p.waiting === 0 && !searching;
     $('olEmpty').hidden = !(olTab === 'quick' && (none || longWait));
-    $('olEmptyText').innerHTML = searching
+    const tip = peakInfo && peakInfo.sum ? `<br>💡 Thường đông người nhất lúc ${peakInfo.sum.text}.` : '';
+    $('olEmptyText').innerHTML = (searching
       ? '<b>Chưa tìm thấy đối thủ.</b><br>Trong lúc chờ, bạn có thể mời bạn bè cùng chơi hoặc chơi offline với máy.'
-      : '<b>Hiện chưa có ai khác đang chờ ghép.</b><br>Bạn có thể mời bạn bè cùng chơi, hoặc chơi offline với máy trong lúc chờ.';
+      : '<b>Hiện chưa có ai khác đang chờ ghép.</b><br>Bạn có thể mời bạn bè cùng chơi, hoặc chơi offline với máy trong lúc chờ.') + tip;
   }
   $('olInvite').addEventListener('click', async () => { if (Q) await quickStop(); showOlTab('create'); });
   $('olGoOffline').addEventListener('click', async () => { if (Q) await quickStop(); closeDlg($('onlineDlg')); openOffline('ai'); });
@@ -1493,21 +1596,31 @@
   async function quickStart() {
     if (!ensureNick()) return;
     $('olQuickBtn').hidden = true; $('olQuickWait').hidden = false;
+    hideBanner();
     try {
       await NET.syncClock();
       const me = await NET.uid();
       await NET.del(`claims/${me}`).catch(() => {});
       await NET.queueJoin(olInfo());
       Q = { me, clock: +olOpts.clockQ, t0: Date.now(), beat: Date.now(), busy: false, done: false, timer: 0, stream: null };
-      Q.stream = NET.stream(`claims/${me}`, { onData: (c) => {
-        if (c && c.room && Q && !Q.done) { Q.done = true; const code = c.room; quickStop(); joinCode(code); }
+      Q.stream = NET.stream(`claims/${me}`, { onData: async (c) => {
+        if (!c || !c.room || !Q || Q.done || Q.asking) return;
+        if (Q.bg) {
+          Q.asking = true;
+          SND.check(); buzz([30, 40, 30]);
+          const yes = await askConfirm('Có người muốn chơi với bạn!', 'Một người chơi đang chờ trong phòng. Vào chơi online ngay? Ván đang chơi sẽ được giữ lại.', 'Vào chơi', 'Để sau');
+          if (!Q) return;
+          Q.asking = false;
+          if (!yes) { quickStop(); return; }
+        }
+        Q.done = true; const code = c.room; quickStop(); joinCode(code);
       } });
       Q.timer = setInterval(quickTick, 2000);
       quickTick();
     } catch (e) { quickStop(); netError(e); }
   }
   async function quickTick() {
-    if (!Q || Q.busy || Q.done) return;
+    if (!Q || Q.busy || Q.done || Q.asking) return;
     Q.busy = true;
     try {
       $('olQuickSec').textContent = Math.round((Date.now() - Q.t0) / 1000) + ' giây' + (olPres ? ` · ${olPres.waiting} người đang chờ` : '');
@@ -1516,7 +1629,22 @@
       const list = await NET.queueScan();
       const now = NET.serverNow();
       const cand = list.find((e) => e.uid !== Q.me && now - e.ts < 40000 && Q.me < e.uid);
+      if (!cand && !Q.offered && !Q.bg && Date.now() - Q.t0 > QUICK_BG_MS) {
+        Q.offered = true; Q.asking = true;
+        const yes = await askConfirm('Chưa có ai vào', 'Bạn muốn chơi với máy trong lúc chờ? Game vẫn tiếp tục tìm đối thủ và báo ngay khi có người.', '🤖 Chơi với máy', 'Tiếp tục chờ');
+        if (!Q) return;
+        Q.asking = false;
+        if (yes) { Q.bg = true; closeDlg($('onlineDlg')); openOffline('ai'); }
+      }
       if (cand && Q && !Q.done) {
+        if (Q.bg) {
+          Q.asking = true;
+          SND.check(); buzz([30, 40, 30]);
+          const yes = await askConfirm('Đã có người chờ!', `${cand.nick || 'Một người chơi'} đang chờ chơi online. Vào chơi ngay? Ván đang chơi sẽ được giữ lại.`, 'Vào chơi', 'Để sau');
+          if (!Q) return;
+          Q.asking = false;
+          if (!yes) { quickStop(); return; }
+        }
         const side = Math.random() < 0.5 ? 0 : 1;
         const code = await NET.createRoom({ side, clock: Q.clock, info: olInfo() });
         try { await NET.claim(cand.uid, code); } catch (e) { if (Q) Q.busy = false; return; } // người khác nhanh tay hơn
@@ -1528,7 +1656,7 @@
   async function quickStop() {
     const q = Q; Q = null;
     $('olQuickBtn').hidden = false; $('olQuickWait').hidden = true;
-    updateEmpty();
+    updateEmpty(); updateBgPill();
     if (!q) return;
     clearInterval(q.timer); if (q.stream) q.stream.close();
     try { await NET.queueLeave(); } catch (e) { /* */ }
@@ -1721,17 +1849,27 @@
     olTeardown();
     leaveSpecial(false);
   }
+  const olInviteText = () => {
+    const link = olLink(OL.code);
+    return `Chơi cờ tướng online với mình nhé! 🎮 ${link ? 'Bấm vào: ' + link : ''}\nMã phòng: ${OL.code}`;
+  };
+  function olFacebook() {
+    if (!OL) return;
+    const link = olLink(OL.code);
+    if (!link) { olCopyLink(); return; }
+    window.open('https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(link) + '&quote=' + encodeURIComponent('Chơi cờ tướng online với mình nhé! Mã phòng: ' + OL.code), '_blank', 'noopener');
+  }
   function olCopyLink() {
     if (!OL) return;
-    const link = olLink(OL.code) || OL.code;
-    const done = () => toast('Đã sao chép: ' + link);
+    const link = olInviteText();
+    const done = () => toast('Đã sao chép lời mời, hãy dán vào Zalo, Messenger…');
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(done, () => window.prompt('Sao chép link này:', link));
     else window.prompt('Sao chép link này:', link);
   }
   function olShare() {
     if (!OL) return;
     const url = olLink(OL.code);
-    const text = `Chơi cờ tướng với mình nhé! Mã phòng: ${OL.code}`;
+    const text = `Chơi cờ tướng online với mình nhé! 🎮 Mã phòng: ${OL.code}`;
     if (navigator.share) navigator.share({ title: 'Cờ Tướng', text, url: url || undefined }).catch(() => {});
     else olCopyLink();
   }
@@ -1790,5 +1928,5 @@
   } else if (!resumed && !pendingOnline) setTimeout(showNewDlg, 350);
   if (startRoom.length === 6) { try { history.replaceState(null, '', location.pathname); } catch (e) { /* */ } whenReady(() => joinCode(startRoom)); }
   else if (resumeCode) whenReady(() => resumeRoom(resumeCode));
-  window.__cotuong = { NET, get OL() { return OL; }, quickStart, Eng, get PF() { return PF; }, recordGame, checkBadges, openProfile, get G() { return G; }, S, tryMove, render, newGame, setView, startPuzzle, startReplay, openAnalysis, loadArchive, geom: { CELL, M, BW, BH }, sqXY: (sq) => [sqX(sq), sqY(sq)] }; // phục vụ kiểm thử
+  window.__cotuong = { peakSummary, presEnsure, get Q() { return Q; }, NET, get OL() { return OL; }, quickStart, Eng, get PF() { return PF; }, recordGame, checkBadges, openProfile, get G() { return G; }, S, tryMove, render, newGame, setView, startPuzzle, startReplay, openAnalysis, loadArchive, geom: { CELL, M, BW, BH }, sqXY: (sq) => [sqX(sq), sqY(sq)] }; // phục vụ kiểm thử
 })();

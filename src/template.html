@@ -50,6 +50,8 @@
           </div>
         </div>
         <div id="toast" role="status" aria-live="polite"></div>
+        <div id="banner" hidden><span id="bnText"></span><button id="bnGo" type="button" class="primary"></button><button id="bnX" type="button" aria-label="Đóng">✕</button></div>
+        <div id="bgPill" hidden><span class="spinner"></span><span>Đang chờ đối thủ online…</span><button id="bgCancel" type="button">Hủy</button></div>
       </div>
       <div class="pbar bottom" id="barBottom"></div>
       <div id="statusLine" aria-live="polite">
@@ -126,6 +128,7 @@
             <label class="chk"><input type="checkbox" id="chkHints"> Hiện các ô có thể đi</label>
             <label class="chk"><input type="checkbox" id="chkSound"> Âm thanh</label>
             <label class="chk"><input type="checkbox" id="chkVibe"> Rung khi đi quân</label>
+            <label class="chk"><input type="checkbox" id="chkAlerts"> 🔔 Báo khi có người chờ chơi online</label>
           </div>
         </div>
         <div class="card">
@@ -143,7 +146,7 @@
   <div class="hd"><h2>Chọn cách chơi</h2><button class="icon" type="button" data-close aria-label="Đóng">✕</button></div>
   <div class="bd">
     <button id="homeOnline" class="homecard online" type="button">
-      <span class="hi">🌐</span><span class="ht"><b>Chơi online</b><small>Thi đấu với bạn bè qua mạng</small></span>
+      <span class="hi">🌐</span><span class="ht"><b>Chơi online</b><small>Thi đấu với bạn bè qua mạng</small><small id="homePresence" class="hp"></small></span>
     </button>
     <button id="homeOffline" class="homecard offline" type="button">
       <span class="hi">🤖</span><span class="ht"><b>Chơi offline</b><small>Luyện cờ với máy, không cần mạng</small></span>
@@ -217,6 +220,12 @@
         <div id="olEmpty" class="emptybox" hidden>
           <p id="olEmptyText"><b>Hiện chưa có ai khác đang chờ ghép.</b><br>Bạn có thể mời bạn bè cùng chơi, hoặc chơi offline với máy trong lúc chờ.</p>
           <div class="row2"><button id="olInvite" type="button">📨 Mời bạn bè</button><button id="olGoOffline" type="button" class="offline-btn">🤖 Chơi offline</button></div>
+        </div>
+        <div id="olPeak" class="peakbox" hidden>
+          <div class="pk-title">⏰ Giờ nào đông người chơi nhất?</div>
+          <div id="olPeakBars" class="pk-bars"></div>
+          <div class="pk-axis"><span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>23h</span></div>
+          <div id="olPeakText" class="muted"></div>
         </div>
       </div>
       <div id="olPanelCreate" class="olpanel" hidden>

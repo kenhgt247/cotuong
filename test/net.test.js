@@ -40,6 +40,12 @@ global.self = global;
   ok(pr.waiting === 0, 'B không tự đếm mình là người chờ');
   swap(B); await B.net.queueLeave();
 
+  // giờ cao điểm: ba người cùng có mặt
+  swap(A); const hA = await A.net.markActive(); swap(B); await B.net.markActive();
+  const Cc = mk(); swap(Cc); await Cc.net.markActive();
+  swap(A); const pk = await A.net.peakHours();
+  ok(pk.length === 24 && pk[hA] === 3 && pk.reduce((x, y) => x + y, 0) === 3, 'ba người có mặt ở giờ ' + hA + 'h: ' + JSON.stringify(pk.filter(Boolean)));
+
   // phòng chơi + luồng sự kiện
   swap(A); const code = await A.net.createRoom({ side: 0, clock: 10, info: { nick: 'Nam', avatar: '🐲', rating: 1100 } });
   ok(/^[A-Z0-9]{6}$/.test(code), 'tạo phòng, mã ' + code);

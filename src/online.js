@@ -208,11 +208,22 @@ function createNet(config) {
     const waiting = q.filter((e) => e.uid !== me && now - e.ts < 40000).length;
     return { online: Math.max(online, 1), waiting };
   }
+  /** Ghi nhận mình có mặt ở khung giờ này (giờ Việt Nam). Mỗi người chỉ có một dấu cho mỗi giờ trong ngày. */
+  const vnHour = () => new Date(serverNow() + 7 * 3600000).getUTCHours();
+  async function markActive() { const u = (await ensureAuth()).uid; await put(`activity/${vnHour()}/${u}`, SV); return vnHour(); }
+  /** Số người khác nhau có mặt ở từng giờ trong 14 ngày gần đây (mảng 24 phần tử). */
+  async function peakHours() {
+    const v = await get('activity');
+    const cutoff = serverNow() - 14 * 86400000;
+    const counts = new Array(24).fill(0);
+    for (const h of Object.keys(v || {})) for (const u of Object.keys(v[h] || {})) if (v[h][u] >= cutoff && +h >= 0 && +h < 24) counts[+h]++;
+    return counts;
+  }
   async function heartbeat() { const uid = (await ensureAuth()).uid; await put(`seen/${uid}`, SV); }
   async function uid() { return (await ensureAuth()).uid; }
 
   return {
-    enabled, uid, ensureAuth, get, put, patch, del, stream, syncClock, serverNow, heartbeat, presence,
+    enabled, uid, ensureAuth, get, put, patch, del, stream, syncClock, serverNow, heartbeat, presence, markActive, peakHours, vnHour,
     saveUser, leaderboard, createRoom, joinRoom, sendMove, sendResult, sendOffer, clearOffer, sendChat,
     queueJoin, queueLeave, queueScan, claim, cleanCode, setAt, patchAt,
   };

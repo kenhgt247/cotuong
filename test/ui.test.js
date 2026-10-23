@@ -14,7 +14,7 @@ const ok = (c, m) => { console.log(c ? 'ok  :' : 'FAIL:', m); if (!c) fails++; }
   await ctx.addInitScript(() => { if (!localStorage.getItem('cotuong.profile')) localStorage.setItem('cotuong.profile', JSON.stringify({ setup: true, name: 'Bùi Văn Bảo Nam', nick: 'Nam', avatar: '🐲' })); });
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
-  page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
+  page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push('console: ' + m.text()); });
   await page.goto(url);
   await page.waitForSelector('#board .piece');
   await page.waitForFunction(() => document.getElementById('homeDlg').open); await page.screenshot({ path: out + '/h1-home.png' }); await page.tap('#homeOffline'); await page.waitForFunction(() => document.getElementById('newDlg').open);

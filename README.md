@@ -9,7 +9,7 @@ Luật theo *Luật Cờ Tướng* của Liên đoàn Cờ Việt Nam.
 - **Hồ sơ người chơi**: họ và tên, biệt danh, ảnh đại diện; thống kê thắng/thua/hòa theo độ khó; điểm xếp hạng (Elo); huy hiệu
 - **Bài tập chiếu hết** (72 bài, 1–3 nước, tự tạo và kiểm tra bằng `tools/gen-puzzles.js`)
 - **Lưu ván đã chơi**, xem lại từng nước, **phân tích ván** (máy chỉ ra nước sai và nước tốt hơn)
-- **Chơi online**: ghép nhanh, tạo phòng / vào phòng bằng mã hoặc link, bảng xếp hạng, xin hòa, xin thua, nói chuyện bằng câu có sẵn, tự vào lại ván khi tải lại trang
+- **Chơi online**: hiện số người online và đang chờ ghép (cả trên màn hình chọn cách chơi), thông báo khi có người chờ, vừa chờ vừa chơi với máy, biểu đồ giờ cao điểm, mời bạn qua Zalo/Messenger/Facebook, ghép nhanh, tạo phòng / vào phòng bằng mã hoặc link, bảng xếp hạng, xin hòa, xin thua, nói chuyện bằng câu có sẵn, tự vào lại ván khi tải lại trang
 - Ghi nước đi kiểu Việt Nam ("Pháo 2 bình 5"), tên quân bằng chữ Hán hoặc tiếng Việt
 
 ## Cấu trúc
@@ -52,6 +52,8 @@ Chơi online cần một dự án Firebase miễn phí (gói Spark là đủ). L
 Lưu ý:
 - `apiKey` của Firebase cho ứng dụng web không phải bí mật; dữ liệu được bảo vệ bằng `database.rules.json`.
 - Nếu bạn giới hạn API key theo tên miền (HTTP referrer), hãy thêm tên miền Vercel của game.
+- Mỗi lần cập nhật `database.rules.json` trong repo, nhớ dán lại vào tab **Rules** và bấm **Publish**.
+- Game ghi một dấu "có mặt" ẩn danh theo từng giờ (nhánh `activity`) để vẽ biểu đồ giờ cao điểm; không lưu thông tin cá nhân.
 - Dữ liệu phòng cũ và hàng chờ không tự xóa. Thỉnh thoảng vào Firebase Console xóa nhánh `rooms`, `queue`, `claims` để gọn (gói miễn phí dư sức chứa rất nhiều ván).
 
 ### Quyền riêng tư của trẻ em
@@ -70,6 +72,8 @@ npm install                      # cài targaryen, eventsource (chỉ để ch�
 node test/dbrules.test.js        # luật bảo mật Firebase (mô phỏng, không cần mạng)
 node test/net.test.js            # lớp mạng + máy chủ giả có luật thật
 node test/online.test.js         # hai trình duyệt chơi online với nhau
+node test/presence.test.js       # số người online, phòng chờ trống
+node test/invite.test.js         # thông báo, tìm đối thủ chạy nền, giờ cao điểm, chia sẻ lời mời
 node test/perpetual.test.js      # luật chiếu mãi / bắt mãi
 node test/ui.test.js             # giao diện điện thoại và máy tính
 node test/profile.test.js        # hồ sơ, thống kê, huy hiệu

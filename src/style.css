@@ -333,3 +333,25 @@ label.lbl { display: block; }
 .emptybox { margin-top: 14px; padding: 12px 14px; border-radius: 14px; background: #fff4d3; border: 2px dashed #e0b94a; }
 .emptybox p { margin: 0 0 10px; line-height: 1.45; }
 .emptybox .row2 { margin-top: 0; }
+
+/* ===== Thông báo có người chờ, tìm đối thủ chạy nền ===== */
+.homecard .hp { margin-top: 4px; font-weight: 700; opacity: 1; font-size: .85rem; }
+#banner { position: fixed; left: 50%; top: calc(env(safe-area-inset-top) + 10px); transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 8px; max-width: calc(100vw - 20px); padding: 10px 12px; border-radius: 16px; background: #fff7dc; color: var(--ink); border: 2px solid #e0b94a; box-shadow: 0 10px 30px rgba(0,0,0,.45); animation: pop .3s cubic-bezier(.3,1.4,.5,1); }
+#banner[hidden] { display: none; }
+#banner span { font-weight: 700; }
+#banner button { padding: 8px 12px; color: var(--ink); background: #fff; border-color: var(--line); }
+#banner button.primary { color: #fff; background: linear-gradient(#d8362a, var(--accent-d)); border-color: #7d1a14; }
+#bgPill { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 86px); transform: translateX(-50%); z-index: 40; display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 999px; background: rgba(30,16,6,.94); color: #fff; border: 1px solid var(--glass-line); box-shadow: 0 8px 24px rgba(0,0,0,.4); font-size: .9rem; }
+#bgPill[hidden] { display: none; }
+#bgPill button { padding: 4px 12px; border-radius: 999px; color: #fff; }
+@media (min-width: 901px) { #bgPill { bottom: 20px; } }
+
+/* ===== Giờ cao điểm ===== */
+.peakbox { margin-top: 14px; padding: 12px 14px; border-radius: 14px; background: #fff; border: 1px solid var(--line); }
+.pk-title { font-weight: 800; margin-bottom: 8px; }
+.pk-bars { display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; align-items: end; height: 56px; }
+.pk-bars i { display: block; background: #e6d6ae; border-radius: 3px 3px 0 0; min-height: 3px; }
+.pk-bars i.top { background: var(--accent); }
+.pk-bars i.now { outline: 2px solid #2a7de1; outline-offset: 1px; }
+.pk-axis { display: flex; justify-content: space-between; font-size: .7rem; color: var(--muted); margin-top: 3px; }
+.peakbox .muted { margin: 8px 0 0; }

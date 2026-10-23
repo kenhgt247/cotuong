@@ -28,6 +28,16 @@
       }
     },
 
+    "activity": {
+      ".read": "auth != null",
+      "$h": {
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid && $h.matches(/^([0-9]|1[0-9]|2[0-3])$/)",
+          ".validate": "newData.val() === now"
+        }
+      }
+    },
+
     "queue": {
       ".read": "auth != null",
       ".indexOn": ["ts"],
