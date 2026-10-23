@@ -80,3 +80,7 @@ node test/profile.test.js        # hồ sơ, thống kê, huy hiệu
 node test/features.test.js       # bài tập, xem lại, phân tích
 node test/pwa.test.js            # PWA, offline
 ```
+
+## Bot đối thủ (luôn ghi rõ là bot)
+
+Trong "Chơi online" có nút **🤖 Đấu với bot** (cũng hiện khi chưa có ai chờ ghép). Bốn bot: 🐴 Tiểu Mã (~600), 💣 Pháo Thủ (~1000), 🛡 Xe Tướng (~1400), 🧙 Sư Phụ (~1800). Bot chạy ngay trên máy người chơi, luôn gắn nhãn 🤖 BOT, không ghi gì lên Firebase và không vào bảng xếp hạng online. Điểm đấu bot tính riêng trong hồ sơ; bot nghĩ với thời gian thay đổi, nói vài câu có sẵn, không cho đi lại/gợi ý (giống chơi online). Test: `node test/bot.test.js`.

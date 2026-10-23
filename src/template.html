@@ -216,10 +216,12 @@
         <div class="field"><div class="lbl">Đồng hồ mỗi bên</div>
           <div class="seg four" data-ol="clockQ"><button type="button" data-v="0">Không</button><button type="button" data-v="5">5′</button><button type="button" data-v="10">10′</button><button type="button" data-v="15">15′</button></div></div>
         <button id="olQuickBtn" class="primary big" type="button">⚡ Tìm đối thủ</button>
+        <button id="olBotBtn" class="big botbtn" type="button">🤖 Đấu với bot <small>luôn sẵn sàng</small></button>
         <div id="olQuickWait" hidden><p><span class="spinner dark"></span> Đang tìm đối thủ… <span id="olQuickSec"></span></p><button id="olQuickCancel" type="button">Hủy tìm</button></div>
         <div id="olEmpty" class="emptybox" hidden>
           <p id="olEmptyText"><b>Hiện chưa có ai khác đang chờ ghép.</b><br>Bạn có thể mời bạn bè cùng chơi, hoặc chơi offline với máy trong lúc chờ.</p>
-          <div class="row2"><button id="olInvite" type="button">📨 Mời bạn bè</button><button id="olGoOffline" type="button" class="offline-btn">🤖 Chơi offline</button></div>
+          <div class="row2"><button id="olInvite" type="button">📨 Mời bạn bè</button><button id="olGoOffline" type="button" class="offline-btn">💻 Chơi offline</button></div>
+          <div class="row2"><button id="olEmptyBot" type="button" class="botbtn" style="margin-top:0">🤖 Đấu với bot (có nhãn bot)</button></div>
         </div>
         <div id="olPeak" class="peakbox" hidden>
           <div class="pk-title">⏰ Giờ nào đông người chơi nhất?</div>
@@ -243,6 +245,19 @@
         <div id="olBoardList"><p class="muted">Đang tải…</p></div>
       </div>
     </div>
+  </div>
+</dialog>
+
+<dialog id="botDlg">
+  <div class="hd"><h2>🤖 Đấu với bot</h2><button class="icon" type="button" data-close aria-label="Đóng">✕</button></div>
+  <div class="bd">
+    <p class="dedicate">Bot là máy tính và luôn được gắn nhãn 🤖. Điểm đấu bot tính riêng, không vào bảng xếp hạng online.</p>
+    <div class="field"><div class="lbl">Bạn cầm quân</div>
+      <div class="seg" data-bo="side"><button type="button" data-v="r">Ngẫu nhiên</button><button type="button" data-v="0">Trắng<small>đi trước</small></button><button type="button" data-v="1">Đen<small>đi sau</small></button></div></div>
+    <div class="field"><div class="lbl">Đồng hồ mỗi bên</div>
+      <div class="seg five" data-bo="clock"><button type="button" data-v="0">Không</button><button type="button" data-v="5">5′</button><button type="button" data-v="10">10′</button><button type="button" data-v="15">15′</button><button type="button" data-v="30">30′</button></div></div>
+    <div class="lbl" style="margin-top:16px">Chọn bot để đấu</div>
+    <div id="botList"></div>
   </div>
 </dialog>
 

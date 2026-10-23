@@ -1,0 +1,38 @@
+const { chromium } = require('playwright');
+const fs = require('fs');
+(async () => {
+  const b = await chromium.launch({ executablePath: process.env.PW_CHROMIUM || undefined });
+  const p = await (await b.newContext({ viewport: { width: 390, height: 800 } })).newPage();
+  const errs = [];
+  p.on('pageerror', (e) => errs.push(e.message));
+  p.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errs.push(m.text()); });
+  await p.addInitScript(() => { window.__BOT_FAST = true; localStorage.setItem('cotuong.profile', JSON.stringify({ name: 'Test', nick: 'Tester', avatar: '🙂' })); });
+  await p.goto('file://' + require('path').resolve('public/index.html'));
+  await p.waitForFunction(() => window.__cotuong);
+  await p.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
+  const ok = (c, m) => { if (!c) { console.log('FAIL', m); process.exitCode = 1; } else console.log('ok', m); };
+  ok(await p.evaluate(() => __cotuong.BOTS.length === 4), '4 bots');
+  await p.evaluate(() => __cotuong.startBotGame('tieu-ma', '0'));
+  ok(await p.evaluate(() => __cotuong.G.cfg.mode === 'bot' && __cotuong.G.bot.id === 'tieu-ma'), 'bot game started');
+  await p.evaluate(() => { const { Eng, G, tryMove } = __cotuong; const r = Eng.search(G.pos[G.pos.length - 1], 0, { maxDepth: 2, timeMs: 60, exact: true, margin: 80 }); tryMove(r.mv, false); });
+  await p.waitForFunction(() => __cotuong.G.moves.length >= 2, null, { timeout: 15000 });
+  ok(true, 'bot replied');
+  ok(await p.evaluate(() => /BOT/.test(document.body.innerText)), 'bot label shown');
+  const labelled = await p.evaluate(() => /🤖 BOT/.test(document.body.innerText));
+  ok(labelled, 'label 🤖 BOT visible');
+  await p.evaluate(() => { document.getElementById('btnUndo').click(); });
+  ok(await p.evaluate(() => __cotuong.G.moves.length >= 1), 'undo disabled');
+  // resign -> stats
+  await p.evaluate(() => { const g = __cotuong.G; __cotuong.PF.bots.games; });
+  const before = await p.evaluate(() => __cotuong.PF.bots.games);
+  await p.evaluate(() => document.getElementById('btnMenu').click());
+  await p.evaluate(() => { const r = document.getElementById('btnResign'); r && r.click(); });
+  await p.waitForTimeout(300);
+  await p.evaluate(() => { const y = document.querySelector('#confirmDlg [data-yes], #confirmDlg .primary'); y && y.click(); });
+  await p.waitForTimeout(500);
+  const st = await p.evaluate(() => ({ over: !!__cotuong.G.over, games: __cotuong.PF.bots.games, rating: __cotuong.PF.bots.rating }));
+  ok(st.over && st.games === before + 1 && st.rating < 1000, 'resign recorded in bot stats only ' + JSON.stringify(st));
+  ok(await p.evaluate(() => __cotuong.PF.online.games === 0 && __cotuong.PF.games === 0), 'online/ai stats untouched');
+  ok(errs.length === 0, 'no errors ' + errs.join('|'));
+  await b.close();
+})();

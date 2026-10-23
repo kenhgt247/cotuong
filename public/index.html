@@ -372,6 +372,19 @@ label.lbl { display: block; }
 .pk-axis { display: flex; justify-content: space-between; font-size: .7rem; color: var(--muted); margin-top: 3px; }
 .peakbox .muted { margin: 8px 0 0; }
 
+/* ===== Bot ===== */
+.botbtn { background: #fff; border: 2px solid #2a7de1; color: #1b4fa8; font-weight: 800; margin-top: 8px; }
+.botbtn small { font-weight: 600; opacity: .8; margin-left: 6px; }
+.botcard { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 12px; margin-top: 8px; border-radius: 16px; border: 2px solid var(--line); background: #fff; }
+.botcard:hover { border-color: #2a7de1; background: #f4f9ff; }
+.botcard .bav { font-size: 2.2rem; width: 56px; height: 56px; display: grid; place-items: center; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #eef6ff, #bcd7f8); flex: none; }
+.botcard .bt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.botcard .bt b { font-size: 1.1rem; }
+.botcard .bt small { color: var(--muted); line-height: 1.3; }
+.botcard .bs { text-align: right; font-weight: 800; font-size: .95rem; white-space: nowrap; }
+.botcard .bs small { display: block; color: #d99a12; letter-spacing: 1px; }
+.tagbot { display: inline-block; background: #2a7de1; color: #fff; border-radius: 6px; padding: 0 6px; font-size: .7rem; font-weight: 800; margin-left: 4px; }
+
 </style>
 </head>
 <body>
@@ -573,10 +586,12 @@ label.lbl { display: block; }
         <div class="field"><div class="lbl">Đồng hồ mỗi bên</div>
           <div class="seg four" data-ol="clockQ"><button type="button" data-v="0">Không</button><button type="button" data-v="5">5′</button><button type="button" data-v="10">10′</button><button type="button" data-v="15">15′</button></div></div>
         <button id="olQuickBtn" class="primary big" type="button">⚡ Tìm đối thủ</button>
+        <button id="olBotBtn" class="big botbtn" type="button">🤖 Đấu với bot <small>luôn sẵn sàng</small></button>
         <div id="olQuickWait" hidden><p><span class="spinner dark"></span> Đang tìm đối thủ… <span id="olQuickSec"></span></p><button id="olQuickCancel" type="button">Hủy tìm</button></div>
         <div id="olEmpty" class="emptybox" hidden>
           <p id="olEmptyText"><b>Hiện chưa có ai khác đang chờ ghép.</b><br>Bạn có thể mời bạn bè cùng chơi, hoặc chơi offline với máy trong lúc chờ.</p>
-          <div class="row2"><button id="olInvite" type="button">📨 Mời bạn bè</button><button id="olGoOffline" type="button" class="offline-btn">🤖 Chơi offline</button></div>
+          <div class="row2"><button id="olInvite" type="button">📨 Mời bạn bè</button><button id="olGoOffline" type="button" class="offline-btn">💻 Chơi offline</button></div>
+          <div class="row2"><button id="olEmptyBot" type="button" class="botbtn" style="margin-top:0">🤖 Đấu với bot (có nhãn bot)</button></div>
         </div>
         <div id="olPeak" class="peakbox" hidden>
           <div class="pk-title">⏰ Giờ nào đông người chơi nhất?</div>
@@ -600,6 +615,19 @@ label.lbl { display: block; }
         <div id="olBoardList"><p class="muted">Đang tải…</p></div>
       </div>
     </div>
+  </div>
+</dialog>
+
+<dialog id="botDlg">
+  <div class="hd"><h2>🤖 Đấu với bot</h2><button class="icon" type="button" data-close aria-label="Đóng">✕</button></div>
+  <div class="bd">
+    <p class="dedicate">Bot là máy tính và luôn được gắn nhãn 🤖. Điểm đấu bot tính riêng, không vào bảng xếp hạng online.</p>
+    <div class="field"><div class="lbl">Bạn cầm quân</div>
+      <div class="seg" data-bo="side"><button type="button" data-v="r">Ngẫu nhiên</button><button type="button" data-v="0">Trắng<small>đi trước</small></button><button type="button" data-v="1">Đen<small>đi sau</small></button></div></div>
+    <div class="field"><div class="lbl">Đồng hồ mỗi bên</div>
+      <div class="seg five" data-bo="clock"><button type="button" data-v="0">Không</button><button type="button" data-v="5">5′</button><button type="button" data-v="10">10′</button><button type="button" data-v="15">15′</button><button type="button" data-v="30">30′</button></div></div>
+    <div class="lbl" style="margin-top:16px">Chọn bot để đấu</div>
+    <div id="botList"></div>
   </div>
 </dialog>
 
@@ -1679,7 +1707,7 @@ function createNet(config) {
       cfg: opts.cfg || { mode: S.mode, human: S.human, level: S.level, clock: S.clock },
       pos: [b], moves: [], notes: [], keys: [Eng.boardKey(b, first)], caps: [], over: null,
       sel: null, legal: [], hint: null, hintText: '', thinking: false, busy: false, anim: null, viewing: false,
-      view: null, auto: 0, analysis: null, puzzle: opts.puzzle || null,
+      view: null, auto: 0, analysis: null, puzzle: opts.puzzle || null, bot: null, botChats: 0,
       clock: { on: ms > 0, t: [ms, ms], last: null } };
   }
   const isGame = () => G.kind === 'game';
@@ -1700,7 +1728,7 @@ function createNet(config) {
   const AVATARS = ['🐲', '🐯', '🦁', '🐼', '🦊', '🐘', '🦅', '🐬', '⭐', '♟', '🚀', '⚡'];
   const LEVEL_RATING = [600, 1000, 1400, 1800]; // điểm "danh nghĩa" của máy ở từng độ khó
   const blankProfile = () => ({ setup: false, name: '', nick: '', avatar: '🐲', rating: 1000, games: 0, w: [0, 0, 0, 0], l: [0, 0, 0, 0], d: [0, 0, 0, 0],
-    pvp: { w: 0, l: 0, d: 0 }, online: { w: 0, l: 0, d: 0, games: 0, rating: 1000 }, streak: 0, best: 0, fastWin: 0, badges: {}, created: Date.now() });
+    pvp: { w: 0, l: 0, d: 0 }, online: { w: 0, l: 0, d: 0, games: 0, rating: 1000 }, bots: { w: 0, l: 0, d: 0, games: 0, rating: 1000 }, botWins: {}, streak: 0, best: 0, fastWin: 0, badges: {}, created: Date.now() });
   function loadProfile() {
     const base = blankProfile();
     try {
@@ -1708,7 +1736,7 @@ function createNet(config) {
       if (x && typeof x === 'object') {
         const arr4 = (a) => (Array.isArray(a) && a.length === 4 ? a.map((v) => v | 0) : [0, 0, 0, 0]);
         return Object.assign(base, x, { w: arr4(x.w), l: arr4(x.l), d: arr4(x.d),
-          pvp: Object.assign(base.pvp, x.pvp), online: Object.assign(base.online, x.online), badges: x.badges && typeof x.badges === 'object' ? x.badges : {} });
+          pvp: Object.assign(base.pvp, x.pvp), online: Object.assign(base.online, x.online), bots: Object.assign(base.bots, x.bots), botWins: x.botWins && typeof x.botWins === 'object' ? x.botWins : {}, badges: x.badges && typeof x.badges === 'object' ? x.badges : {} });
       }
     } catch (e) { /* hồ sơ hỏng: dùng hồ sơ mới */ }
     return base;
@@ -1735,6 +1763,8 @@ function createNet(config) {
     { id: 'puz10', icon: '🧩', name: 'Thợ giải thế', desc: 'Giải đúng 10 bài tập', ok: (p, x) => x.solved >= 10 },
     { id: 'puz40', icon: '🧠', name: 'Bậc thầy thế cờ', desc: 'Giải đúng 40 bài tập', ok: (p, x) => x.solved >= 40 },
     { id: 'puz3star', icon: '🌟', name: 'Ba sao', desc: 'Đạt 3 sao ở 10 bài tập', ok: (p, x) => x.stars3 >= 10 },
+    { id: 'bot_any', icon: '🤖', name: 'Hạ gục bot', desc: 'Thắng một bot', ok: (p) => Object.values(p.botWins).some((v) => v > 0) },
+    { id: 'bot_master', icon: '🧙', name: 'Vượt qua Sư Phụ', desc: 'Thắng bot Sư Phụ', ok: (p) => (p.botWins['su-phu'] | 0) > 0 },
     { id: 'online1', icon: '🌐', name: 'Kỳ thủ online', desc: 'Chơi một ván online', ok: (p) => p.online.games >= 1 },
     { id: 'online_win', icon: '🎖', name: 'Thắng online', desc: 'Thắng một ván online', ok: (p) => p.online.w >= 1 },
   ];
@@ -1772,6 +1802,11 @@ function createNet(config) {
       PF.rating = eloUpdate(PF.rating, LEVEL_RATING[lv], score, PF.games);
       if (res === 'w') { PF.streak++; if (PF.streak > PF.best) PF.best = PF.streak; if (g.moves.length < 50) PF.fastWin++; }
       else if (res === 'l') PF.streak = 0;
+    } else if (c.mode === 'bot' && g.bot) {
+      const w = g.over.winner, res = w === null ? 'd' : (w === c.human ? 'w' : 'l');
+      PF.bots[res]++; PF.bots.games++;
+      PF.bots.rating = eloUpdate(PF.bots.rating, g.bot.rating, res === 'w' ? 1 : res === 'd' ? 0.5 : 0, PF.bots.games);
+      if (res === 'w') PF.botWins[g.bot.id] = (PF.botWins[g.bot.id] | 0) + 1;
     } else if (c.mode === 'online') {
       const w = g.over.winner, res = w === null ? 'd' : (w === c.human ? 'w' : 'l');
       const opp = (g.online && g.online.opp) || {};
@@ -1809,7 +1844,8 @@ function createNet(config) {
     names.forEach((n, i) => { h += `<tr><td>${n}</td><td class="res-win">${PF.w[i]}</td><td class="res-draw">${PF.d[i]}</td><td class="res-lose">${PF.l[i]}</td></tr>`; });
     h += `<tr class="tot"><td>Tổng</td><td class="res-win">${W}</td><td class="res-draw">${D}</td><td class="res-lose">${L}</td></tr></tbody></table>`;
     h += `<p class="muted">Chuỗi thắng hiện tại: <b>${PF.streak}</b> · dài nhất: <b>${PF.best}</b> · Bài tập đã giải: <b>${x.solved}</b>/${typeof PUZZLES !== 'undefined' ? PUZZLES.length : 0} (${x.stars3} bài 3 sao)</p>`;
-    const o = PF.online;
+    const o = PF.online, bt = PF.bots;
+    h += `<p class="muted">Đấu bot: <b>${bt.rating}</b> điểm · thắng ${bt.w} · hòa ${bt.d} · thua ${bt.l}</p>`;
     h += `<p class="muted">Online: <b>${o.rating}</b> điểm · thắng ${o.w} · hòa ${o.d} · thua ${o.l}${PF.pvp.w + PF.pvp.d ? ` · Hai người cùng máy: ${PF.pvp.w + PF.pvp.d} ván` : ''}</p>`;
     h += '<div class="pz-title">Huy hiệu</div><div class="badges">' + BADGES.map((b) => `<div class="badge-i${PF.badges[b.id] ? ' got' : ''}" title="${escapeHtml(b.desc)}"><span>${PF.badges[b.id] ? b.icon : '🔒'}</span><b>${b.name}</b><small>${b.desc}</small></div>`).join('') + '</div>';
     $('pfStats').innerHTML = h;
@@ -2025,6 +2061,70 @@ function createNet(config) {
   }
   const REASON = { check: 'chiếu mãi (nước nào cũng chiếu Tướng)', chase: 'đuổi bắt mãi một quân' };
 
+
+  // ---------- Bot đối thủ (luôn ghi rõ là bot) ----------
+  const BOTS = [
+    { id: 'tieu-ma', name: 'Tiểu Mã', avatar: '🐴', rating: 600, stars: '★☆☆☆', blurb: 'Mới tập chơi, hay đi sai. Hợp để làm quen.',
+      search: { maxDepth: 2, timeMs: 300, margin: 300, exact: true }, think: [1500, 4500],
+      lines: { start: ['Chào bạn! Mình mới tập chơi thôi nhé 🐴', 'Mình là Tiểu Mã, chơi nhẹ tay nha!'], idle: ['Hừm, để mình nghĩ…', 'Oái, khó quá!', 'Nước của bạn hay đó!'], win: ['Mình thắng rồi! May quá 😅'], lose: ['Bạn giỏi quá, mình chịu thua!'], draw: ['Hòa nhé, vui quá!'] } },
+    { id: 'phao-thu', name: 'Pháo Thủ', avatar: '💣', rating: 1000, stars: '★★☆☆', blurb: 'Thích đánh pháo đầu, tấn công mạnh.',
+      search: { maxDepth: 3, timeMs: 700, margin: 40, exact: true }, think: [1200, 5000],
+      lines: { start: ['Pháo đầu nào! 💣', 'Chuẩn bị đỡ pháo nhé!'], idle: ['Cẩn thận pháo của mình đó!', 'Để xem bạn đỡ thế nào…'], win: ['Pháo nổ rồi! Ván hay đấy!'], lose: ['Pháo hết đạn rồi 😄 Bạn chơi hay quá!'], draw: ['Hòa! Đấu lại nhé?'] } },
+    { id: 'xe-tuong', name: 'Xe Tướng', avatar: '🛡', rating: 1400, stars: '★★★☆', blurb: 'Chắc chắn, ít sai lầm. Phải suy nghĩ kỹ mới thắng.',
+      search: { maxDepth: 6, timeMs: 1400, margin: 0 }, think: [1500, 7000],
+      lines: { start: ['Xe này không dễ ăn đâu 🛡', 'Hãy cho mình thấy bản lĩnh nào!'], idle: ['Thế cờ thú vị đấy.', 'Mình đang tính vài nước…'], win: ['Ván hay! Lần sau bạn sẽ thắng.'], lose: ['Bạn đã hạ được Xe Tướng, giỏi lắm!'], draw: ['Cân tài cân sức, hòa nhé.'] } },
+    { id: 'su-phu', name: 'Sư Phụ', avatar: '🧙', rating: 1800, stars: '★★★★', blurb: 'Cao thủ, nghĩ lâu, rất khó thắng.',
+      search: { maxDepth: 9, timeMs: 3000, margin: 0 }, think: [2000, 9000],
+      lines: { start: ['Hãy cho thầy thấy bạn học được gì 🧙', 'Thầy sẽ không nhường đâu nhé.'], idle: ['Hừm…', 'Nước này có ý đấy.'], win: ['Còn phải luyện thêm, nhưng con đánh khá lắm!'], lose: ['Con đã vượt qua thầy rồi! 👏'], draw: ['Hòa. Con tiến bộ nhiều rồi.'] } },
+  ];
+  const botOpts = { side: 'r', clock: '0' };
+  const botFast = () => !!window.__BOT_FAST;
+  function botSay(kind, game) {
+    const g = game || G;
+    if (!g || !g.bot || g !== G) return;
+    const arr = g.bot.lines[kind];
+    if (!arr || !arr.length) return;
+    toast(`${g.bot.avatar} ${g.bot.name}: ${arr[(Math.random() * arr.length) | 0]}`, false, 3600);
+  }
+  function botDelay(bot, nLegal, t0) {
+    if (botFast()) return 60;
+    const [lo, hi] = bot.think;
+    let d = (lo + Math.random() * (hi - lo)) * (0.6 + Math.min(1.2, nLegal / 45));
+    if (G.clock.on) d = Math.min(d, G.clock.t[turn()] / 12);
+    return Math.max(0, d - (Date.now() - t0));
+  }
+  function openBots() {
+    $('botList').innerHTML = BOTS.map((b) => `<button class="botcard" type="button" data-id="${b.id}"><span class="bav">${b.avatar}</span><span class="bt"><b>${b.name} <span class="tagbot">🤖 BOT</span></b><small>${b.blurb}</small></span><span class="bs">${b.rating}<small>${b.stars}</small></span></button>`).join('');
+    document.querySelectorAll('#botDlg [data-bo]').forEach((seg) => seg.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x.dataset.v === botOpts[seg.dataset.bo])));
+    openDlg($('botDlg'));
+  }
+  document.querySelectorAll('#botDlg [data-bo]').forEach((seg) => seg.addEventListener('click', (ev) => {
+    const x = ev.target.closest('button'); if (!x) return;
+    botOpts[seg.dataset.bo] = x.dataset.v;
+    seg.querySelectorAll('button').forEach((y) => y.classList.toggle('on', y === x));
+  }));
+  $('botList').addEventListener('click', (ev) => { const b = ev.target.closest('.botcard'); if (b) startBotGame(b.dataset.id, botOpts.side); });
+  async function startBotGame(botId, sideSel) {
+    const bot = BOTS.find((b) => b.id === botId);
+    if (!bot) return;
+    if (G && G.online && !G.over) { toast('Đang chơi online – hãy thoát ván trước nhé.'); return; }
+    if (isGame() && !G.online && G.moves.length >= 2 && !G.over && !G.bot && false) return;
+    const side = sideSel === 'r' ? (Math.random() < 0.5 ? 0 : 1) : +sideSel;
+    if (Q) await quickStop();
+    cancelAI();
+    leaveSpecial(true);
+    if (G && isGame() && G.moves.length >= 6 && !G.over) archiveGame(G, true);
+    G = freshGame({ cfg: { mode: 'bot', human: side, level: 0, clock: +botOpts.clock | 0, botId } });
+    G.bot = bot;
+    S.flipped = side === 1;
+    closeDlg($('botDlg')); closeDlg($('onlineDlg')); closeDlg($('homeDlg')); setSheet(false);
+    render(); saveGame(); maybeAI();
+    const game = G;
+    setTimeout(() => { if (G === game && !G.moves.length || G === game && G.moves.length < 3) botSay('start', game); }, botFast() ? 200 : 1500);
+  }
+  $('olBotBtn').addEventListener('click', openBots);
+  $('olEmptyBot').addEventListener('click', async () => { if (Q) await quickStop(); openBots(); });
+
   // ---------- Đi quân ----------
   function applyRaw(mv) {
     const mover = turn();
@@ -2113,12 +2213,13 @@ function createNet(config) {
     G.thinking = false; G.busy = false; G.sel = null; G.hint = null; G.hintText = '';
     aiToken++;
     if (winner === null) { SND.move(); }
-    else if (cfg().mode === 'ai' || cfg().mode === 'online') { winner === cfg().human ? SND.win() : SND.lose(); }
+    else if (cfg().mode === 'ai' || cfg().mode === 'online' || cfg().mode === 'bot') { winner === cfg().human ? SND.win() : SND.lose(); }
     else SND.win();
     buzz(winner === null ? 20 : [60, 60, 120]);
     G.viewing = false;
     if (isGame()) { archiveGame(G); recordGame(G); }
     if (G.online && !remote) olSendResult(winner === null ? 2 : winner, text);
+    if (G.bot) { const g0 = G; setTimeout(() => botSay(winner === null ? 'draw' : winner === cfg().human ? 'lose' : 'win', g0), botFast() ? 300 : 900); }
   }
 
   // ---------- Đồng hồ ----------
@@ -2170,23 +2271,32 @@ function createNet(config) {
   }
 
   function maybeAI() {
-    if (!isGame() || G.over || cfg().mode !== 'ai' || turn() === cfg().human || G.thinking) return;
+    const md = G && G.cfg.mode;
+    if (!isGame() || G.over || (md !== 'ai' && md !== 'bot') || turn() === cfg().human || G.thinking) return;
     G.thinking = true;
     render();
     const token = ++aiToken;
-    const opts = Object.assign({}, LEVELS[cfg().level], { override: aiOverride() });
-    if (G.moves.length < 4 && cfg().level >= 1) { opts.exact = true; opts.margin = 40; opts.maxDepth = Math.min(opts.maxDepth, 3); opts.timeMs = 800; }
+    const bot = G.bot;
+    const opts = Object.assign({}, bot ? bot.search : LEVELS[cfg().level], { override: aiOverride() });
+    if (G.moves.length < 4 && (bot ? bot.rating >= 1000 : cfg().level >= 1)) { opts.exact = true; opts.margin = 40; opts.maxDepth = Math.min(opts.maxDepth, 3); opts.timeMs = 800; }
     if (G.clock.on) opts.timeMs = Math.max(250, Math.min(opts.timeMs, G.clock.t[turn()] / 25));
     const t0 = Date.now();
     const game = G;
     runSearch(cur(), turn(), opts).then((res) => {
       if (token !== aiToken || G !== game) return;
-      const wait = Math.max(0, 450 - (Date.now() - t0));
+      const wait = bot ? botDelay(bot, Eng.genLegal(stateOf(cur()), turn()).length, t0) : Math.max(0, 450 - (Date.now() - t0));
       setTimeout(() => {
         if (token !== aiToken || G !== game) return;
         G.thinking = false;
         if (!res) { render(); return; }
+        if (bot && res.bestScore < -1100 && G.moves.length >= 40 && Math.random() < 0.5) {
+          finish(cfg().human, `${bot.name} (bot) xin thua. Bạn thắng!`);
+          render(); saveGame();
+          return;
+        }
+        const mover = turn();
         tryMove(res.mv, false);
+        if (bot && !G.over && G.botChats < 3 && Math.random() < 0.07) { G.botChats++; botSay('idle', game); }
       }, wait);
     });
   }
@@ -2243,7 +2353,7 @@ function createNet(config) {
   });
 
   function undo() {
-    if (!isGame() || G.online || G.view != null || !G.moves.length) return;
+    if (!isGame() || G.online || G.bot || G.view != null || !G.moves.length) { if (G && G.bot) toast('Đấu với bot không được đi lại, giống như chơi online!'); return; }
     cancelAI();
     const popOne = () => { G.moves.pop(); G.notes.pop(); G.pos.pop(); G.keys.pop(); G.caps.pop(); };
     G.over = null; G.analysis = null;
@@ -2256,6 +2366,7 @@ function createNet(config) {
 
   async function hint() {
     if (G.online) { toast('Chơi online không dùng gợi ý nhé!'); return; }
+    if (G.bot) { toast('Đấu với bot không dùng gợi ý, giống như chơi online!'); return; }
     if (G.over || G.thinking || G.busy || !humanTurn() || G.view != null) return;
     if (G.kind === 'puzzle') return puzzleHint();
     G.busy = true; G.hint = null; G.hintText = 'Đang nghĩ gợi ý…'; render();
@@ -2339,13 +2450,13 @@ function createNet(config) {
   function archiveGame(g, abandoned) {
     if (!g.moves.length || g.kind !== 'game') return;
     const list = loadArchive().filter((x) => x.id !== g.id);
-    list.unshift({ id: g.id, t: Date.now(), cfg: g.cfg, moves: g.moves.slice(), winner: abandoned ? 'x' : g.over.winner, text: abandoned ? 'Bỏ dở' : g.over.text, opp: g.online && g.online.opp ? g.online.opp.nick : '' });
+    list.unshift({ id: g.id, t: Date.now(), cfg: g.cfg, moves: g.moves.slice(), winner: abandoned ? 'x' : g.over.winner, text: abandoned ? 'Bỏ dở' : g.over.text, opp: g.online && g.online.opp ? g.online.opp.nick : (g.bot ? g.bot.name : ''), oppAvatar: g.bot ? g.bot.avatar : '' });
     saveArchive(list);
   }
   function resultLabel(e) {
     if (e.winner === 'x') return ['Bỏ dở', ''];
     if (e.winner === null) return ['Hòa', 'res-draw'];
-    if (e.cfg.mode === 'ai' || e.cfg.mode === 'online') return e.winner === e.cfg.human ? ['Thắng', 'res-win'] : ['Thua', 'res-lose'];
+    if (e.cfg.mode === 'ai' || e.cfg.mode === 'online' || e.cfg.mode === 'bot') return e.winner === e.cfg.human ? ['Thắng', 'res-win'] : ['Thua', 'res-lose'];
     return [SIDE_SHORT[e.winner] + ' thắng', 'res-win'];
   }
   function renderGamesList() {
@@ -2355,7 +2466,7 @@ function createNet(config) {
       const [txt, cls] = resultLabel(e);
       const d = new Date(e.t);
       const when = `${d.getDate()}/${d.getMonth() + 1} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-      const vs = e.cfg.mode === 'ai' ? `Với máy · ${LEVELS[e.cfg.level].name} · cầm ${SIDE_SHORT[e.cfg.human]}` : e.cfg.mode === 'online' ? `Online · với ${escapeHtml(e.opp || 'đối thủ')} · cầm ${SIDE_SHORT[e.cfg.human]}` : '2 người';
+      const vs = e.cfg.mode === 'bot' ? `Đấu bot 🤖 ${escapeHtml(e.opp || '')} · cầm ${SIDE_SHORT[e.cfg.human]}` : e.cfg.mode === 'ai' ? `Với máy · ${LEVELS[e.cfg.level].name} · cầm ${SIDE_SHORT[e.cfg.human]}` : e.cfg.mode === 'online' ? `Online · với ${escapeHtml(e.opp || 'đối thủ')} · cầm ${SIDE_SHORT[e.cfg.human]}` : '2 người';
       return `<div class="grow"><div class="gi"><b class="${cls}">${txt}</b><small>${vs}<br>${when} · ${e.moves.length} nước</small></div><button data-act="view" data-id="${e.id}">Xem lại</button><button data-act="del" data-id="${e.id}" aria-label="Xóa">🗑</button></div>`;
     }).join('');
   }
@@ -2395,7 +2506,7 @@ function createNet(config) {
     G = live;
     g.over = { winner: e.winner === 'x' ? null : e.winner, text: e.text };
     g.recorded = true;
-    if (e.opp) g.oppInfo = { nick: e.opp, avatar: '🙂', rating: 0 };
+    if (e.opp) g.oppInfo = { nick: e.opp, avatar: e.oppAvatar || '🙂', rating: 0 };
     enterSpecial(g, e.cfg.mode === 'ai' && e.cfg.human === 1);
     setView(0);
   }
@@ -2676,8 +2787,8 @@ function createNet(config) {
     $('puzzlebar').hidden = !(G.kind === 'puzzle' && !inView);
     $('vbAuto').firstElementChild.textContent = G.auto ? '⏸' : '⏵';
     $('vbDone').firstElementChild.textContent = G.kind === 'replay' ? 'Thoát' : 'Xong';
-    $('btnUndo').disabled = !G.moves.length || special || inView || !!G.online;
-    const cant = !!G.over || G.thinking || G.busy || !humanTurn() || inView || special || !!G.online;
+    $('btnUndo').disabled = !G.moves.length || special || inView || !!G.online || !!G.bot;
+    const cant = !!G.over || G.thinking || G.busy || !humanTurn() || inView || special || !!G.online || !!G.bot;
     $('btnHint').disabled = (G.kind === 'puzzle' ? false : cant);
     $('btnDraw').disabled = cant;
     $('btnResign').disabled = !!G.over || (special && !G.online);
@@ -2702,6 +2813,15 @@ function createNet(config) {
       const isAI = c.mode === 'ai' && side !== c.human;
       let who = c.mode === 'pvp' ? 'Người chơi' : (isAI ? '🤖 Máy' : PF.avatar + ' ' + escapeHtml(displayName()));
       let tag = SIDE_NAME[side] + (isAI ? ` · ${LEVELS[c.level].name}` : '');
+      if (c.mode === 'bot') {
+        const bi = G.bot || G.oppInfo;
+        if (side === c.human) { who = PF.avatar + ' ' + escapeHtml(PF.nick || displayName()); tag = SIDE_NAME[side] + ` · ${PF.bots.rating} điểm đấu bot`; }
+        else if (bi) {
+          const th = G.thinking && G.bot ? ' <span class="spinner" title="Đang nghĩ"></span>' : '';
+          who = (bi.avatar || '🤖') + ' ' + escapeHtml(bi.nick || bi.name) + ' <span class="tagbot">🤖 BOT</span>' + th;
+          tag = SIDE_NAME[side] + (bi.rating ? ` · ${bi.rating} điểm` : '');
+        }
+      }
       if (c.mode === 'online') {
         const mine = side === c.human;
         const opp = (G.online && G.online.opp) || G.oppInfo;
@@ -2745,11 +2865,11 @@ function createNet(config) {
     } else if (G.over) {
       s.textContent = G.over.winner === null ? 'Ván cờ hòa' : `${SIDE_NAME[G.over.winner]} thắng`;
     } else if (G.thinking) {
-      s.innerHTML = '<span class="spinner"></span> Máy đang suy nghĩ…';
+      s.innerHTML = '<span class="spinner"></span> ' + (G.bot ? `${G.bot.avatar} ${G.bot.name} đang suy nghĩ…` : 'Máy đang suy nghĩ…');
     } else {
       const t = turn();
       let txt = `Lượt đi: ${SIDE_NAME[t]}`;
-      if (cfg().mode !== 'pvp') txt = t === cfg().human ? `Đến lượt bạn (${SIDE_NAME[t]})` : (cfg().mode === 'online' ? `Lượt của đối thủ (${SIDE_NAME[t]})` : `Lượt của máy (${SIDE_NAME[t]})`);
+      if (cfg().mode !== 'pvp') txt = t === cfg().human ? `Đến lượt bạn (${SIDE_NAME[t]})` : (cfg().mode === 'online' ? `Lượt của đối thủ (${SIDE_NAME[t]})` : G.bot ? `Lượt của ${G.bot.name} (${SIDE_NAME[t]})` : `Lượt của máy (${SIDE_NAME[t]})`);
       if (G.online && G.online.waiting) txt = '⏳ Đang chờ đối thủ vào phòng…';
       s.innerHTML = '';
       s.appendChild(document.createTextNode(txt));
@@ -2804,12 +2924,15 @@ function createNet(config) {
       if (G.over.winner === null) title = '🤝 Ván cờ hòa';
       else if (cfg().mode === 'ai') title = G.over.winner === cfg().human ? '🎉 Bạn thắng!' : '😅 Máy thắng';
       else if (cfg().mode === 'online') title = G.over.winner === cfg().human ? '🎉 Bạn thắng!' : '😢 Bạn thua';
+      else if (cfg().mode === 'bot') title = G.over.winner === cfg().human ? '🎉 Bạn thắng bot!' : `😅 ${G.bot ? G.bot.name : 'Bot'} thắng`;
       else title = `🎉 ${SIDE_NAME[G.over.winner]} thắng!`;
       $('ovTitle').textContent = title;
       let more = '';
       if (G.online && typeof G.online.delta === 'number') more = ` Điểm online: ${PF.online.rating} (${G.online.delta >= 0 ? '+' : ''}${G.online.delta}).`;
       $('ovText').textContent = G.over.text + more;
-      btns.innerHTML = G.online
+      btns.innerHTML = G.bot
+        ? '<button class="primary" data-ov="rematch" type="button">Đấu lại</button><button data-ov="view" type="button">Xem lại</button><button data-ov="analyze" type="button">🔍 Phân tích</button><button data-ov="new" type="button">Ván mới</button>'
+        : G.online
         ? '<button class="primary" data-ov="exit" type="button">Thoát</button><button data-ov="view" type="button">Xem lại</button><button data-ov="analyze" type="button">🔍 Phân tích</button>'
         : '<button class="primary" data-ov="new" type="button">Ván mới</button><button data-ov="view" type="button">Xem lại</button><button data-ov="analyze" type="button">🔍 Phân tích</button>';
     }
@@ -2820,6 +2943,7 @@ function createNet(config) {
     if (a === 'new') openNew();
     else if (a === 'view') setView(G.moves.length);
     else if (a === 'analyze') openAnalysis();
+    else if (a === 'rematch') startBotGame(G.bot.id, G.cfg.human === 0 ? '1' : '0');
     else if (a === 'next') nextPuzzle();
     else if (a === 'retry') puzzleRetry();
     else if (a === 'list') openPuzzles();
@@ -3003,7 +3127,9 @@ function createNet(config) {
       const g = JSON.parse(localStorage.getItem('cotuong.game') || 'null');
       if (g && Array.isArray(g.moves) && g.moves.length) {
         const c = g.cfg || { mode: S.mode, human: S.human, level: S.level, clock: S.clock };
-        G = freshGame({ cfg: { mode: c.mode === 'pvp' ? 'pvp' : 'ai', human: c.human === 1 ? 1 : 0, level: Math.min(3, Math.max(0, c.level | 0)), clock: c.clock | 0 } });
+        const botFound = c.mode === 'bot' && BOTS.find((b) => b.id === c.botId);
+        G = freshGame({ cfg: { mode: c.mode === 'pvp' ? 'pvp' : (botFound ? 'bot' : 'ai'), human: c.human === 1 ? 1 : 0, level: Math.min(3, Math.max(0, c.level | 0)), clock: c.clock | 0, botId: botFound ? botFound.id : undefined } });
+        if (botFound) G.bot = botFound;
         if (g.id) G.id = g.id;
         const ms = G.cfg.clock * 60000;
         G.clock = { on: ms > 0, t: [ms, ms], last: null };
@@ -3565,7 +3691,7 @@ function createNet(config) {
   } else if (!resumed && !pendingOnline) setTimeout(showNewDlg, 350);
   if (startRoom.length === 6) { try { history.replaceState(null, '', location.pathname); } catch (e) { /* */ } whenReady(() => joinCode(startRoom)); }
   else if (resumeCode) whenReady(() => resumeRoom(resumeCode));
-  window.__cotuong = { peakSummary, presEnsure, get Q() { return Q; }, NET, get OL() { return OL; }, quickStart, Eng, get PF() { return PF; }, recordGame, checkBadges, openProfile, get G() { return G; }, S, tryMove, render, newGame, setView, startPuzzle, startReplay, openAnalysis, loadArchive, geom: { CELL, M, BW, BH }, sqXY: (sq) => [sqX(sq), sqY(sq)] }; // phục vụ kiểm thử
+  window.__cotuong = { BOTS, startBotGame, peakSummary, presEnsure, get Q() { return Q; }, NET, get OL() { return OL; }, quickStart, Eng, get PF() { return PF; }, recordGame, checkBadges, openProfile, get G() { return G; }, S, tryMove, render, newGame, setView, startPuzzle, startReplay, openAnalysis, loadArchive, geom: { CELL, M, BW, BH }, sqXY: (sq) => [sqX(sq), sqY(sq)] }; // phục vụ kiểm thử
 })();
 
 </script>

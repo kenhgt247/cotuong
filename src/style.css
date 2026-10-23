@@ -355,3 +355,16 @@ label.lbl { display: block; }
 .pk-bars i.now { outline: 2px solid #2a7de1; outline-offset: 1px; }
 .pk-axis { display: flex; justify-content: space-between; font-size: .7rem; color: var(--muted); margin-top: 3px; }
 .peakbox .muted { margin: 8px 0 0; }
+
+/* ===== Bot ===== */
+.botbtn { background: #fff; border: 2px solid #2a7de1; color: #1b4fa8; font-weight: 800; margin-top: 8px; }
+.botbtn small { font-weight: 600; opacity: .8; margin-left: 6px; }
+.botcard { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 12px; margin-top: 8px; border-radius: 16px; border: 2px solid var(--line); background: #fff; }
+.botcard:hover { border-color: #2a7de1; background: #f4f9ff; }
+.botcard .bav { font-size: 2.2rem; width: 56px; height: 56px; display: grid; place-items: center; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #eef6ff, #bcd7f8); flex: none; }
+.botcard .bt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.botcard .bt b { font-size: 1.1rem; }
+.botcard .bt small { color: var(--muted); line-height: 1.3; }
+.botcard .bs { text-align: right; font-weight: 800; font-size: .95rem; white-space: nowrap; }
+.botcard .bs small { display: block; color: #d99a12; letter-spacing: 1px; }
+.tagbot { display: inline-block; background: #2a7de1; color: #fff; border-radius: 6px; padding: 0 6px; font-size: .7rem; font-weight: 800; margin-left: 4px; }
