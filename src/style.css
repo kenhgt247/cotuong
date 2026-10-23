@@ -368,3 +368,12 @@ label.lbl { display: block; }
 .botcard .bs { text-align: right; font-weight: 800; font-size: .95rem; white-space: nowrap; }
 .botcard .bs small { display: block; color: #d99a12; letter-spacing: 1px; }
 .tagbot { display: inline-block; background: #2a7de1; color: #fff; border-radius: 6px; padding: 0 6px; font-size: .7rem; font-weight: 800; margin-left: 4px; }
+
+/* ===== Nước vừa đi ===== */
+#lastMove { margin: 4px auto 0; padding: 6px 12px; border-radius: 12px; font-size: 1rem; text-align: center; max-width: 100%; }
+#lastMove.theirs { background: #fff1e6; color: #a8400a; border: 2px solid #e8590c; }
+#lastMove.mine { background: #e8f0fe; color: #1b4fa8; border: 1px solid #9bb8ee; }
+#lastMove .mvn { font-weight: 800; font-size: 1.1rem; }
+.lastto { animation: lastpulse 1.2s ease-out 2; }
+@keyframes lastpulse { 0% { opacity: .95; } 100% { opacity: .5; } }
+@media (prefers-reduced-motion: reduce) { .lastto { animation: none; } }

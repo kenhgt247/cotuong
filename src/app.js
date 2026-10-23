@@ -1075,8 +1075,24 @@
     const chk = Eng.inCheck(stateOf(b), t);
     if (len > 0) {
       const lm = G.moves[len - 1];
-      ring(gHl, lm & 127, 26, '#2f6fde', 2.5, { 'stroke-dasharray': '5 4', opacity: .85 });
-      ring(gHl, lm >> 7, 29, '#2f6fde', 3.5, { opacity: .9 });
+      const f = lm & 127, to = lm >> 7;
+      const opp = !G.over && G.kind === 'game' && cfg().mode !== 'pvp' && ((G.first + len - 1) & 1) !== cfg().human;
+      const col = opp ? '#e8590c' : '#2f6fde';
+      // ô xuất phát và ô đến tô nền đậm để nhìn là thấy ngay
+      el('rect', { x: sqX(f) - 26, y: sqY(f) - 26, width: 52, height: 52, rx: 8, fill: col, opacity: .28 }, gHl);
+      el('rect', { x: sqX(to) - 27, y: sqY(to) - 27, width: 54, height: 54, rx: 8, fill: col, opacity: .5, class: opp ? 'lastto' : '' }, gHl);
+      ring(gHl, to, 29, col, 4, { opacity: .95 });
+      // mũi tên từ ô cũ sang ô mới (vẽ trên quân)
+      const x1 = sqX(f), y1 = sqY(f), x2 = sqX(to), y2 = sqY(to), d = Math.hypot(x2 - x1, y2 - y1) || 1;
+      const ux = (x2 - x1) / d, uy = (y2 - y1) / d;
+      if (d > 30) {
+        const sx = x1 + ux * 12, sy = y1 + uy * 12, ex = x2 - ux * 30, ey = y2 - uy * 30;
+        if (Math.hypot(ex - sx, ey - sy) > 4) {
+          el('line', { x1: sx, y1: sy, x2: ex, y2: ey, stroke: col, 'stroke-width': 5, 'stroke-linecap': 'round', opacity: .85, class: 'lastarrow' }, gMarks);
+          const hx = x2 - ux * 25, hy = y2 - uy * 25, px = -uy, py = ux;
+          el('polygon', { points: `${hx},${hy} ${hx - ux * 13 + px * 8},${hy - uy * 13 + py * 8} ${hx - ux * 13 - px * 8},${hy - uy * 13 - py * 8}`, fill: col, opacity: .9, class: 'lastarrow' }, gMarks);
+        }
+      }
     }
     if (chk) {
       const g = stateOf(b).kp[t];
@@ -1211,6 +1227,16 @@
       if (chk) { const bd = document.createElement('span'); bd.className = 'badge'; bd.textContent = 'CHIẾU TƯỚNG!'; s.appendChild(bd); }
     }
     $('hintText').textContent = hintText;
+    const lmEl = $('lastMove'), L = vlen();
+    if (G.kind !== 'puzzle' && L > 0 && G.notes[L - 1]) {
+      const mv = G.moves[L - 1], who = (G.first + L - 1) & 1;
+      const mine = G.kind === 'game' && cfg().mode !== 'pvp' && who === cfg().human;
+      const lead = G.kind !== 'game' || cfg().mode === 'pvp' ? SIDE_NAME[who] : (mine ? 'Bạn' : (G.bot ? G.bot.name : cfg().mode === 'online' ? 'Đối thủ' : 'Máy'));
+      lmEl.className = mine ? 'mine' : 'theirs';
+      lmEl.innerHTML = `<b>${escapeHtml(lead)}</b> vừa đi: <span class="mvn">${escapeHtml(G.notes[L - 1])}</span>`;
+      lmEl.hidden = false;
+      void mv;
+    } else lmEl.hidden = true;
   }
 
   function renderMoves() {
