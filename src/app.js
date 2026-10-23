@@ -178,7 +178,7 @@
     h += `<table class="st-tbl"><thead><tr><th>Độ khó</th><th>Thắng</th><th>Hòa</th><th>Thua</th></tr></thead><tbody>`;
     names.forEach((n, i) => { h += `<tr><td>${n}</td><td class="res-win">${PF.w[i]}</td><td class="res-draw">${PF.d[i]}</td><td class="res-lose">${PF.l[i]}</td></tr>`; });
     h += `<tr class="tot"><td>Tổng</td><td class="res-win">${W}</td><td class="res-draw">${D}</td><td class="res-lose">${L}</td></tr></tbody></table>`;
-    h += `<p class="muted">Chuỗi thắng hiện tại: <b>${PF.streak}</b> · dài nhất: <b>${PF.best}</b> · Bài tập đã giải: <b>${x.solved}</b>/${typeof PUZZLES !== 'undefined' ? PUZZLES.length : 0} (${x.stars3} bài 3 sao)</p>`;
+    h += `<p class="muted">Chuỗi thắng hiện tại: <b>${PF.streak}</b> · dài nhất: <b>${PF.best}</b> · Bài tập đã giải: <b>${x.solved}</b>/${typeof PUZZLES !== 'undefined' ? PUZZLES.length + theSet().length : 0} (${x.stars3} bài 3 sao)</p>`;
     const o = PF.online, bt = PF.bots;
     h += `<p class="muted">Đấu bot: <b>${bt.rating}</b> điểm · thắng ${bt.w} · hòa ${bt.d} · thua ${bt.l}</p>`;
     h += `<p class="muted">Online: <b>${o.rating}</b> điểm · thắng ${o.w} · hòa ${o.d} · thua ${o.l}${PF.pvp.w + PF.pvp.d ? ` · Hai người cùng máy: ${PF.pvp.w + PF.pvp.d} ván` : ''}</p>`;
@@ -678,7 +678,7 @@
   $('homeOnline').addEventListener('click', () => { closeDlg($('homeDlg')); openOnline(); });
   $('homeOffline').addEventListener('click', () => openOffline('ai'));
   $('homePvp').addEventListener('click', () => openOffline('pvp'));
-  $('homePuzzle').addEventListener('click', () => { closeDlg($('homeDlg')); openPuzzles(); });
+  $('homePuzzle').addEventListener('click', () => { closeDlg($('homeDlg')); openPuzzles('mate'); });
   $('homeGames').addEventListener('click', () => { closeDlg($('homeDlg')); openGames(); });
   $('homeResume').addEventListener('click', () => closeDlg($('homeDlg')));
   $('btnOffline').addEventListener('click', async () => {
@@ -914,14 +914,23 @@
     if (!p[id] || p[id] < stars) p[id] = stars;
     try { localStorage.setItem(PZ_KEY, JSON.stringify(p)); } catch (e) { /* */ }
   }
+  let pzSet = 'mate';
+  const theSet = () => (typeof THE !== 'undefined' ? THE : []);
+  const allPz = () => PUZZLES.concat(theSet());
+  const setOf = (id) => (String(id).charAt(0) === 't' ? theSet() : PUZZLES);
   function renderPuzzles() {
     const prog = pzProgress(), box = $('puzzlesList');
+    const the = pzSet === 'the', src = the ? theSet() : PUZZLES;
+    $('pzHead').textContent = the ? '♟ Cờ thế' : '🧩 Bài tập chiếu hết';
+    $('pzHelp').textContent = the
+      ? 'Thế tàn cuộc ít quân: bên đi trước chiếu liên tục để hạ Tướng đối phương. Mỗi thế chỉ có đúng một nước mở đầu, càng về sau càng sâu. Chấm sao theo số lần sai và gợi ý.'
+      : 'Tìm nước đi ép đối phương bị chiếu hết. Mỗi bài chỉ có đúng một nước mở đầu. Bạn có thể bấm quân hoặc kéo thả quân.';
     let h = '';
-    for (const n of [1, 2, 3]) {
-      const list = PUZZLES.filter((p) => p.n === n);
+    for (const n of (the ? [3, 4, 5, 6] : [1, 2, 3])) {
+      const list = src.filter((p) => p.n === n);
       if (!list.length) continue;
       const done = list.filter((p) => prog[p.id]).length;
-      h += `<div class="pz-title">Chiếu hết trong ${n} nước <small>(${done}/${list.length})</small></div><div class="pz-grid">`;
+      h += `<div class="pz-title">${the ? 'Cờ thế · ' : ''}Chiếu hết trong ${n} nước <small>(${done}/${list.length})</small></div><div class="pz-grid">`;
       list.forEach((p, i) => {
         const st = prog[p.id] || 0;
         const cur = G.puzzle && G.puzzle.id === p.id ? ' cur' : '';
@@ -931,16 +940,19 @@
     }
     box.innerHTML = h;
   }
-  function openPuzzles() {
+  function openPuzzles(set) {
+    pzSet = set === 'the' ? 'the' : 'mate';
     if (G.online && !G.over) { toast('Đang chơi online – hãy thoát ván trước nhé.'); setSheet(false); return; }
     setSheet(false); renderPuzzles(); openDlg($('puzzlesDlg')); }
+  $('btnThe').addEventListener('click', () => openPuzzles('the'));
+  $('homeThe').addEventListener('click', () => { closeDlg($('homeDlg')); openPuzzles('the'); });
   $('puzzlesList').addEventListener('click', (ev) => {
     const b = ev.target.closest('.pz-tile'); if (!b) return;
     closeDlg($('puzzlesDlg')); startPuzzle(b.dataset.id);
   });
 
   function startPuzzle(id) {
-    const p = PUZZLES.find((x) => x.id === id);
+    const p = allPz().find((x) => x.id === id);
     if (!p) return;
     const { board, side } = Eng.fromFen(p.fen);
     const g = freshGame({ kind: 'puzzle', first: side, board, cfg: { mode: 'pvp', human: side, level: 0, clock: 0 },
@@ -949,13 +961,13 @@
     render();
   }
   function nextPuzzle() {
-    const i = PUZZLES.findIndex((x) => x.id === G.puzzle.id);
-    const next = PUZZLES[(i + 1) % PUZZLES.length];
+    const set = setOf(G.puzzle.id), i = set.findIndex((x) => x.id === G.puzzle.id);
+    const next = set[(i + 1) % set.length];
     startPuzzle(next.id);
   }
   function pzTitle() {
-    const p = G.puzzle, idx = PUZZLES.filter((x) => x.n === p.n).findIndex((x) => x.id === p.id) + 1;
-    return `Bài ${idx} · Chiếu hết trong ${p.n} nước`;
+    const p = G.puzzle, idx = setOf(p.id).filter((x) => x.n === p.n).findIndex((x) => x.id === p.id) + 1;
+    return `${setOf(p.id) === PUZZLES ? '' : 'Cờ thế · '}Bài ${idx} · Chiếu hết trong ${p.n} nước`;
   }
 
   function puzzleMove(mv) {
@@ -1384,8 +1396,8 @@
   $('btnResign').addEventListener('click', resign);
   $('btnFlip').addEventListener('click', () => { flip(); setSheet(false); });
   $('btnMenu').addEventListener('click', () => setSheet(true));
-  $('btnTrain').addEventListener('click', openPuzzles);
-  $('btnTrain2').addEventListener('click', openPuzzles);
+  $('btnTrain').addEventListener('click', () => openPuzzles());
+  $('btnTrain2').addEventListener('click', () => openPuzzles());
   $('btnGames').addEventListener('click', openGames);
   $('btnAnalyze').addEventListener('click', openAnalysis);
   $('sheetClose').addEventListener('click', () => setSheet(false));

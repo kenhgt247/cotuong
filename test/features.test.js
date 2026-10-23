@@ -118,6 +118,28 @@ const ok = (c, m) => { console.log(c ? 'ok  :' : 'FAIL:', m); if (!c) fails++; }
   });
   ok(all.bad.length === 0, `tất cả ${all.okc}/${npz} bài tập giải được (${all.bad.join(',')})`);
 
+  // ---- cờ thế: giải trọn bộ và đo thời gian tính mỗi nước ----
+  const the = await page.evaluate(async () => {
+    const { Eng } = window.__cotuong;
+    let okc = 0, bad = [], worst = 0;
+    for (const p of THE) {
+      window.__cotuong.startPuzzle(p.id);
+      let G = window.__cotuong.G, guard = 0;
+      while (!G.puzzle.solved && guard++ < 8) {
+        while (G.busy) await new Promise((r) => setTimeout(r, 30));
+        const t0 = performance.now();
+        const good = Eng.mateMoves(Eng.newState(Int8Array.from(G.pos[G.pos.length - 1])), G.puzzle.att, G.puzzle.left, true);
+        worst = Math.max(worst, performance.now() - t0);
+        if (!good.length) break;
+        window.__cotuong.tryMove(good[0], true);
+        G = window.__cotuong.G;
+      }
+      if (G.puzzle.solved) okc++; else bad.push(p.id);
+    }
+    return { okc, bad, worst: Math.round(worst), n: THE.length };
+  });
+  ok(the.n >= 30 && the.bad.length === 0, `cờ thế: ${the.okc}/${the.n} thế giải được, nước tính lâu nhất ${the.worst}ms (${the.bad.join(',')})`);
+  await page.evaluate(() => { document.getElementById('homeThe'); });
   console.log(errors.length ? 'LỖI TRÌNH DUYỆT:\n' + errors.join('\n') : 'Không có lỗi trình duyệt');
   await browser.close();
   process.exit(errors.length || fails ? 1 : 0);

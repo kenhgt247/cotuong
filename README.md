@@ -84,3 +84,7 @@ node test/pwa.test.js            # PWA, offline
 ## Bot đối thủ (luôn ghi rõ là bot)
 
 Trong "Chơi online" có nút **🤖 Đấu với bot** (cũng hiện khi chưa có ai chờ ghép). Bốn bot: 🐴 Tiểu Mã (~600), 💣 Pháo Thủ (~1000), 🛡 Xe Tướng (~1400), 🧙 Sư Phụ (~1800). Bot chạy ngay trên máy người chơi, luôn gắn nhãn 🤖 BOT, không ghi gì lên Firebase và không vào bảng xếp hạng online. Điểm đấu bot tính riêng trong hồ sơ; bot nghĩ với thời gian thay đổi, nói vài câu có sẵn, không cho đi lại/gợi ý (giống chơi online). Test: `node test/bot.test.js`.
+
+## Cờ thế
+
+Menu **♟ Cờ thế** (màn hình chọn cách chơi và menu trong ván) gồm 34 thế tàn cuộc ít quân, chiếu hết trong 3 đến 6 nước, mỗi thế có đúng một nước mở đầu. Tính sao theo số lần sai và gợi ý, lưu cùng tiến độ bài tập. Thế được dựng và kiểm tra bằng `node tools/gen-the.js` (ghi `src/the.js`). Đây là thế tự tạo và máy đã kiểm tra, không phải thế cổ phổ. Test: `node test/features.test.js`.

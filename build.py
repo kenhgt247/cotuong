@@ -10,6 +10,8 @@ engine = engine.replace("if (typeof module !== 'undefined') module.exports = cre
 online = (src / 'online-config.js').read_text(encoding='utf-8') + '\n' + (src / 'online.js').read_text(encoding='utf-8').replace("if (typeof module !== 'undefined') module.exports = createNet;", '')
 puzzles_file = src / 'puzzles.js'
 puzzles = puzzles_file.read_text(encoding='utf-8') if puzzles_file.exists() else 'const PUZZLES = [];'
+the_file = src / 'the.js'
+puzzles += '\n' + (the_file.read_text(encoding='utf-8') if the_file.exists() else 'const THE = [];')
 out = (tpl
        .replace('/*__CSS__*/', (src / 'style.css').read_text(encoding='utf-8'))
        .replace('/*__ENGINE__*/', engine)

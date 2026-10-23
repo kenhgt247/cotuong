@@ -319,8 +319,8 @@ label.lbl { display: block; }
 .homecard.online { background: linear-gradient(135deg, #2a7de1, #1b4fa8); border-color: #123a80; }
 .homecard.offline { background: linear-gradient(135deg, #d8362a, #98201a); border-color: #7d1a14; }
 .homecard:hover:not(:disabled) { filter: brightness(1.08); background: inherit; }
-.homerow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
-.homerow button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px; font-size: 1.5rem; border-radius: 14px; border: 2px solid var(--line); background: #fff; }
+.homerow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 12px; }
+.homerow button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px; font-size: 1.4rem; border-radius: 14px; border: 2px solid var(--line); background: #fff; }
 .homerow small { font-size: .78rem; color: var(--muted); text-align: center; }
 #homeResume { margin-top: 12px; background: #fff4d3; border: 2px solid #e0b94a; }
 .offline-btn { background: linear-gradient(#d8362a, var(--accent-d)) !important; border-color: #7d1a14 !important; color: #fff !important; }
@@ -483,6 +483,7 @@ label.lbl { display: block; }
           <h3>Luyện tập</h3>
           <div class="grid2">
             <button id="btnTrain2" type="button">🧩 Bài tập chiếu hết</button>
+            <button id="btnThe" type="button">♟ Cờ thế</button>
             <button id="btnGames" type="button">📁 Ván đã chơi</button>
             <button id="btnAnalyze" type="button" class="wide">🔍 Phân tích ván này</button>
           </div>
@@ -534,6 +535,7 @@ label.lbl { display: block; }
     <div class="homerow">
       <button id="homePvp" type="button">👥<small>2 người cùng máy</small></button>
       <button id="homePuzzle" type="button">🧩<small>Bài tập</small></button>
+      <button id="homeThe" type="button">♟<small>Cờ thế</small></button>
       <button id="homeGames" type="button">📁<small>Ván đã chơi</small></button>
     </div>
     <button id="homeResume" class="big" type="button" hidden>▶ Tiếp tục ván đang chơi</button>
@@ -665,9 +667,9 @@ label.lbl { display: block; }
 </dialog>
 
 <dialog id="puzzlesDlg">
-  <div class="hd"><h2>🧩 Bài tập chiếu hết</h2><button class="icon" type="button" data-close aria-label="Đóng">✕</button></div>
+  <div class="hd"><h2 id="pzHead">🧩 Bài tập chiếu hết</h2><button class="icon" type="button" data-close aria-label="Đóng">✕</button></div>
   <div class="bd">
-    <p class="muted">Tìm nước đi ép đối phương bị chiếu hết. Mỗi bài chỉ có đúng một nước mở đầu. Bạn có thể bấm quân hoặc kéo thả quân.</p>
+    <p class="muted" id="pzHelp">Tìm nước đi ép đối phương bị chiếu hết. Mỗi bài chỉ có đúng một nước mở đầu. Bạn có thể bấm quân hoặc kéo thả quân.</p>
     <div id="puzzlesList"></div>
   </div>
 </dialog>
@@ -1427,6 +1429,42 @@ const PUZZLES = [{"id":"m1-01","n":1,"side":0,"fen":"4k1bR1/4a4/3a5/4P4/9/8R/9/4
 {"id":"m3-23","n":3,"side":0,"fen":"5a2R/5k3/3a4b/6p2/5Cb2/2p3B2/1p4P2/4K1N2/4A4/5A3 w"},
 {"id":"m3-24","n":3,"side":0,"fen":"9/4ak3/R4a3/9/2bn2b2/7N1/2p6/4Br3/4Rc3/3CKA3 w"}];
 
+// Tạo tự động bởi tools/gen-the.js
+const THE = [{"id":"t3-01","n":3,"side":1,"fen":"3k5/r8/9/c8/6P2/4n4/9/3A5/9/3K5 b"},
+{"id":"t3-02","n":3,"side":1,"fen":"9/5k3/9/9/9/2B6/9/p3K4/4A2nr/2B6 b"},
+{"id":"t3-03","n":3,"side":0,"fen":"2b3b2/1R7/3ak4/R8/9/6B2/C8/3A5/9/3K5 w"},
+{"id":"t3-04","n":3,"side":0,"fen":"3a5/9/b3ka3/9/9/9/9/3AB4/2C6/3K1A2R w"},
+{"id":"t3-05","n":3,"side":0,"fen":"3a1a3/4k4/3N5/9/2b3b2/9/7C1/5K3/1N1RA4/9 w"},
+{"id":"t3-06","n":3,"side":1,"fen":"4k4/9/b2a1a3/C8/9/5r3/9/9/2NKA4/1r1A5 b"},
+{"id":"t3-07","n":3,"side":1,"fen":"3a1kr1c/9/3a5/9/9/2B6/2P6/4nA3/1n2K4/N8 b"},
+{"id":"t3-08","n":3,"side":1,"fen":"5ab2/5k3/3a5/4n4/3n5/6B2/9/B2K1A3/9/4rA2N b"},
+{"id":"t4-01","n":4,"side":0,"fen":"5a3/9/5k3/6C2/9/9/2N6/9/7R1/3K5 w"},
+{"id":"t4-02","n":4,"side":0,"fen":"3k1a3/N6N1/9/9/9/9/9/9/4K2c1/6B2 w"},
+{"id":"t4-03","n":4,"side":1,"fen":"9/3k1r3/9/9/2b6/9/5r3/B2A5/9/4KN3 b"},
+{"id":"t4-04","n":4,"side":1,"fen":"9/r2Pak3/9/9/8c/6n2/9/9/4A4/3AK4 b"},
+{"id":"t4-05","n":4,"side":0,"fen":"3C5/4a4/4k4/R8/6b2/8P/6C2/3A1K3/9/5A3 w"},
+{"id":"t4-06","n":4,"side":0,"fen":"6b2/4ak3/3ab1C2/9/9/9/9/1R7/4K1R2/5A3 w"},
+{"id":"t4-07","n":4,"side":0,"fen":"2bk4C/6p2/3a1R3/4P4/9/2B6/9/5c3/7R1/4K4 w"},
+{"id":"t4-08","n":4,"side":1,"fen":"P8/4a4/2nk1a3/9/4n4/5r3/9/8B/4K4/5Ac2 b"},
+{"id":"t4-09","n":4,"side":0,"fen":"4kab2/R1C1a4/2n6/9/9/9/2p6/3K3R1/9/3A1A3 w"},
+{"id":"t4-10","n":4,"side":1,"fen":"2c1k4/P5c2/3aP4/9/9/9/9/B3rAr2/4A4/2BK5 b"},
+{"id":"t5-01","n":5,"side":1,"fen":"9/4k4/3a4b/9/9/9/9/2p6/5K3/5A2r b"},
+{"id":"t5-02","n":5,"side":0,"fen":"2ba1a3/9/4k4/2C6/3R5/9/9/9/3N5/3K5 w"},
+{"id":"t5-03","n":5,"side":1,"fen":"1r2ka3/2P6/5a3/9/9/9/9/9/5K3/2cA2c2 b"},
+{"id":"t5-04","n":5,"side":0,"fen":"3a1kb2/9/2R2a1c1/9/6b2/n8/9/5K2R/9/9 w"},
+{"id":"t5-05","n":5,"side":1,"fen":"5a3/9/4k4/9/c8/6B2/4n2N1/3K5/4A4/2BA5 b"},
+{"id":"t5-06","n":5,"side":0,"fen":"2b2a3/3k5/5a2b/9/4N4/2B6/9/5A3/4K4/1RN6 w"},
+{"id":"t5-07","n":5,"side":1,"fen":"3a5/3ka4/3r4b/1Rn6/9/9/2P6/4Kc3/9/5A3 b"},
+{"id":"t5-08","n":5,"side":0,"fen":"p2k5/4a1p2/9/9/6b2/5R3/9/5A2R/4A3R/4K4 w"},
+{"id":"t5-09","n":5,"side":0,"fen":"4ka3/8C/3aC4/9/9/1r2N1B2/1p7/4K4/7C1/5A3 w"},
+{"id":"t5-10","n":5,"side":0,"fen":"4C4/3k5/3a4b/3N5/2b6/9/8R/B8/1n1CA4/3A1K3 w"},
+{"id":"t6-01","n":6,"side":0,"fen":"1C3k3/9/5a3/9/3N5/9/9/R8/5K3/6B2 w"},
+{"id":"t6-02","n":6,"side":1,"fen":"9/9/3kb4/1r6c/9/9/7p1/4K4/4A4/9 b"},
+{"id":"t6-03","n":6,"side":0,"fen":"5k3/4N4/3a1a3/9/9/9/9/3NKAC2/9/5A3 w"},
+{"id":"t6-04","n":6,"side":1,"fen":"5k3/5r3/9/c8/9/2B6/9/3A1A2r/5Kc2/6B2 b"},
+{"id":"t6-05","n":6,"side":0,"fen":"5a3/9/3k1a3/9/9/6N2/9/2R3P2/5K1cN/3A2B2 w"},
+{"id":"t6-06","n":6,"side":0,"fen":"5a2n/4a3N/4k4/9/2CC2b2/9/9/3K5/R8/2BA5 w"}];
+
 </script>
 <script>
 /* Cấu hình Firebase cho chơi online.
@@ -1853,7 +1891,7 @@ function createNet(config) {
     h += `<table class="st-tbl"><thead><tr><th>Độ khó</th><th>Thắng</th><th>Hòa</th><th>Thua</th></tr></thead><tbody>`;
     names.forEach((n, i) => { h += `<tr><td>${n}</td><td class="res-win">${PF.w[i]}</td><td class="res-draw">${PF.d[i]}</td><td class="res-lose">${PF.l[i]}</td></tr>`; });
     h += `<tr class="tot"><td>Tổng</td><td class="res-win">${W}</td><td class="res-draw">${D}</td><td class="res-lose">${L}</td></tr></tbody></table>`;
-    h += `<p class="muted">Chuỗi thắng hiện tại: <b>${PF.streak}</b> · dài nhất: <b>${PF.best}</b> · Bài tập đã giải: <b>${x.solved}</b>/${typeof PUZZLES !== 'undefined' ? PUZZLES.length : 0} (${x.stars3} bài 3 sao)</p>`;
+    h += `<p class="muted">Chuỗi thắng hiện tại: <b>${PF.streak}</b> · dài nhất: <b>${PF.best}</b> · Bài tập đã giải: <b>${x.solved}</b>/${typeof PUZZLES !== 'undefined' ? PUZZLES.length + theSet().length : 0} (${x.stars3} bài 3 sao)</p>`;
     const o = PF.online, bt = PF.bots;
     h += `<p class="muted">Đấu bot: <b>${bt.rating}</b> điểm · thắng ${bt.w} · hòa ${bt.d} · thua ${bt.l}</p>`;
     h += `<p class="muted">Online: <b>${o.rating}</b> điểm · thắng ${o.w} · hòa ${o.d} · thua ${o.l}${PF.pvp.w + PF.pvp.d ? ` · Hai người cùng máy: ${PF.pvp.w + PF.pvp.d} ván` : ''}</p>`;
@@ -2353,7 +2391,7 @@ function createNet(config) {
   $('homeOnline').addEventListener('click', () => { closeDlg($('homeDlg')); openOnline(); });
   $('homeOffline').addEventListener('click', () => openOffline('ai'));
   $('homePvp').addEventListener('click', () => openOffline('pvp'));
-  $('homePuzzle').addEventListener('click', () => { closeDlg($('homeDlg')); openPuzzles(); });
+  $('homePuzzle').addEventListener('click', () => { closeDlg($('homeDlg')); openPuzzles('mate'); });
   $('homeGames').addEventListener('click', () => { closeDlg($('homeDlg')); openGames(); });
   $('homeResume').addEventListener('click', () => closeDlg($('homeDlg')));
   $('btnOffline').addEventListener('click', async () => {
@@ -2589,14 +2627,23 @@ function createNet(config) {
     if (!p[id] || p[id] < stars) p[id] = stars;
     try { localStorage.setItem(PZ_KEY, JSON.stringify(p)); } catch (e) { /* */ }
   }
+  let pzSet = 'mate';
+  const theSet = () => (typeof THE !== 'undefined' ? THE : []);
+  const allPz = () => PUZZLES.concat(theSet());
+  const setOf = (id) => (String(id).charAt(0) === 't' ? theSet() : PUZZLES);
   function renderPuzzles() {
     const prog = pzProgress(), box = $('puzzlesList');
+    const the = pzSet === 'the', src = the ? theSet() : PUZZLES;
+    $('pzHead').textContent = the ? '♟ Cờ thế' : '🧩 Bài tập chiếu hết';
+    $('pzHelp').textContent = the
+      ? 'Thế tàn cuộc ít quân: bên đi trước chiếu liên tục để hạ Tướng đối phương. Mỗi thế chỉ có đúng một nước mở đầu, càng về sau càng sâu. Chấm sao theo số lần sai và gợi ý.'
+      : 'Tìm nước đi ép đối phương bị chiếu hết. Mỗi bài chỉ có đúng một nước mở đầu. Bạn có thể bấm quân hoặc kéo thả quân.';
     let h = '';
-    for (const n of [1, 2, 3]) {
-      const list = PUZZLES.filter((p) => p.n === n);
+    for (const n of (the ? [3, 4, 5, 6] : [1, 2, 3])) {
+      const list = src.filter((p) => p.n === n);
       if (!list.length) continue;
       const done = list.filter((p) => prog[p.id]).length;
-      h += `<div class="pz-title">Chiếu hết trong ${n} nước <small>(${done}/${list.length})</small></div><div class="pz-grid">`;
+      h += `<div class="pz-title">${the ? 'Cờ thế · ' : ''}Chiếu hết trong ${n} nước <small>(${done}/${list.length})</small></div><div class="pz-grid">`;
       list.forEach((p, i) => {
         const st = prog[p.id] || 0;
         const cur = G.puzzle && G.puzzle.id === p.id ? ' cur' : '';
@@ -2606,16 +2653,19 @@ function createNet(config) {
     }
     box.innerHTML = h;
   }
-  function openPuzzles() {
+  function openPuzzles(set) {
+    pzSet = set === 'the' ? 'the' : 'mate';
     if (G.online && !G.over) { toast('Đang chơi online – hãy thoát ván trước nhé.'); setSheet(false); return; }
     setSheet(false); renderPuzzles(); openDlg($('puzzlesDlg')); }
+  $('btnThe').addEventListener('click', () => openPuzzles('the'));
+  $('homeThe').addEventListener('click', () => { closeDlg($('homeDlg')); openPuzzles('the'); });
   $('puzzlesList').addEventListener('click', (ev) => {
     const b = ev.target.closest('.pz-tile'); if (!b) return;
     closeDlg($('puzzlesDlg')); startPuzzle(b.dataset.id);
   });
 
   function startPuzzle(id) {
-    const p = PUZZLES.find((x) => x.id === id);
+    const p = allPz().find((x) => x.id === id);
     if (!p) return;
     const { board, side } = Eng.fromFen(p.fen);
     const g = freshGame({ kind: 'puzzle', first: side, board, cfg: { mode: 'pvp', human: side, level: 0, clock: 0 },
@@ -2624,13 +2674,13 @@ function createNet(config) {
     render();
   }
   function nextPuzzle() {
-    const i = PUZZLES.findIndex((x) => x.id === G.puzzle.id);
-    const next = PUZZLES[(i + 1) % PUZZLES.length];
+    const set = setOf(G.puzzle.id), i = set.findIndex((x) => x.id === G.puzzle.id);
+    const next = set[(i + 1) % set.length];
     startPuzzle(next.id);
   }
   function pzTitle() {
-    const p = G.puzzle, idx = PUZZLES.filter((x) => x.n === p.n).findIndex((x) => x.id === p.id) + 1;
-    return `Bài ${idx} · Chiếu hết trong ${p.n} nước`;
+    const p = G.puzzle, idx = setOf(p.id).filter((x) => x.n === p.n).findIndex((x) => x.id === p.id) + 1;
+    return `${setOf(p.id) === PUZZLES ? '' : 'Cờ thế · '}Bài ${idx} · Chiếu hết trong ${p.n} nước`;
   }
 
   function puzzleMove(mv) {
@@ -3059,8 +3109,8 @@ function createNet(config) {
   $('btnResign').addEventListener('click', resign);
   $('btnFlip').addEventListener('click', () => { flip(); setSheet(false); });
   $('btnMenu').addEventListener('click', () => setSheet(true));
-  $('btnTrain').addEventListener('click', openPuzzles);
-  $('btnTrain2').addEventListener('click', openPuzzles);
+  $('btnTrain').addEventListener('click', () => openPuzzles());
+  $('btnTrain2').addEventListener('click', () => openPuzzles());
   $('btnGames').addEventListener('click', openGames);
   $('btnAnalyze').addEventListener('click', openAnalysis);
   $('sheetClose').addEventListener('click', () => setSheet(false));

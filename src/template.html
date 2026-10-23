@@ -104,6 +104,7 @@
           <h3>Luyện tập</h3>
           <div class="grid2">
             <button id="btnTrain2" type="button">🧩 Bài tập chiếu hết</button>
+            <button id="btnThe" type="button">♟ Cờ thế</button>
             <button id="btnGames" type="button">📁 Ván đã chơi</button>
             <button id="btnAnalyze" type="button" class="wide">🔍 Phân tích ván này</button>
           </div>
@@ -155,6 +156,7 @@
     <div class="homerow">
       <button id="homePvp" type="button">👥<small>2 người cùng máy</small></button>
       <button id="homePuzzle" type="button">🧩<small>Bài tập</small></button>
+      <button id="homeThe" type="button">♟<small>Cờ thế</small></button>
       <button id="homeGames" type="button">📁<small>Ván đã chơi</small></button>
     </div>
     <button id="homeResume" class="big" type="button" hidden>▶ Tiếp tục ván đang chơi</button>
@@ -286,9 +288,9 @@
 </dialog>
 
 <dialog id="puzzlesDlg">
-  <div class="hd"><h2>🧩 Bài tập chiếu hết</h2><button class="icon" type="button" data-close aria-label="Đóng">✕</button></div>
+  <div class="hd"><h2 id="pzHead">🧩 Bài tập chiếu hết</h2><button class="icon" type="button" data-close aria-label="Đóng">✕</button></div>
   <div class="bd">
-    <p class="muted">Tìm nước đi ép đối phương bị chiếu hết. Mỗi bài chỉ có đúng một nước mở đầu. Bạn có thể bấm quân hoặc kéo thả quân.</p>
+    <p class="muted" id="pzHelp">Tìm nước đi ép đối phương bị chiếu hết. Mỗi bài chỉ có đúng một nước mở đầu. Bạn có thể bấm quân hoặc kéo thả quân.</p>
     <div id="puzzlesList"></div>
   </div>
 </dialog>
